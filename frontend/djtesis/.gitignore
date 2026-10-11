@@ -1,0 +1,5 @@
+media/
+middleware/__pycache__
+root/__pycache__
+tesis/__pycache__
+db.sqlite3

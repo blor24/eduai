@@ -1,0 +1,17 @@
+eventlet
+flask
+flask_socketio
+requests
+langchain_huggingface
+langchain_chroma
+langchain
+langchain_ollama
+sentence-transformers
+langchain_community
+python-docx
+python-pptx
+pymupdf
+pytesseract
+pdfplumber
+fpdf
+flask_cors

@@ -1,0 +1,286 @@
+{% extends "tesis/base.html" %} 
+{% block title %}Chat{% endblock %} 
+{% block section %}Chat{% endblock %} 
+
+{% block content %}
+<p id="username" hidden>{{ username }}</p>
+<div id="chat-container" style="height: 80vh; position: relative; display: flex; flex-direction: column; border-radius: 8px; overflow: hidden;">
+  
+  <!-- Scrollable message list -->
+  <div id="messages" style="flex-grow: 1; padding: 20px; overflow-y: auto; margin-bottom: 70px;">
+    {% for msg in messages %}
+      <div class="card">
+        <div class="card-header">
+          <h6 class="card-title text-end" id="sender-name">{{ msg.sender }}</h6>
+        </div>
+        <div class="card-body" id="sender-content">
+          {{ msg.sender_content }}
+        </div>      
+      </div>
+
+      <div class="vr"></div>
+
+      <div class="card">
+        <div class="card-header">
+          <h6 class="card-title" id="receiver-name">{{ msg.receiver }}</h6>
+        </div>
+        <div class="card-body" id="receiver-response">
+          {{ msg.receiver_response }}
+        </div>      
+      </div>
+
+      <div style="font-size: 12px;
+          color: #6b7280;
+          margin-top: 10px;
+          text-align: right;">
+        {{ msg.timestamp }}
+      </div>
+
+      <br>
+    {% endfor %}
+    <!-- Messages will appear here -->
+  </div>
+
+  
+  <!-- Fixed input container at the bottom -->
+   
+  <div id="input-container" style="
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    min-height: 60px;
+  ">
+    <label for="model-dropdown"><abbr title="* Por defecto: LLama 3.2; La «B» significa mil millones y es el recuento de parámetros del modelo. Este es el tamaño del modelo. Los modelos más grandes funcionan mejor que los modelos más pequeños.">Modelo:</abbr></label>
+    <select id="models" style="background-color: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;" id="model-dropdown">
+        <option value="1" selected>Llama 3.2</option>
+        {% for key, value in models.items %}
+          <option value="{{key}}">{{value}}</option>
+        {% endfor %}
+    </select>
+    <input type="text" id="message" class="form-control me-2" placeholder="Escribe un mensaje...">
+    <button id="send-button" class="btn btn-success" onclick="sendMessage()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-send" viewBox="0 0 16 16">
+      <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76z"/>
+    </svg></button>
+    <button id="voice-message" type="button" class="btn" data-bs-toggle="button" onclick="sendVoiceMessage()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-mic" viewBox="0 0 16 16">
+        <path d="M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3 8V7a.5.5 0 0 1 .5-.5"/>
+        <path d="M10 8a2 2 0 1 1-4 0V3a2 2 0 1 1 4 0zM8 0a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V3a3 3 0 0 0-3-3"/>
+      </svg>
+    </button>
+  </div>
+</div>
+<div style="font-size: 12px;
+    color: #6b7280;
+    margin-top: 10px;
+    text-align: center;">
+      La IA puede producir información incorrecta de personas, lugares o hechos.
+  </div>
+
+<script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+
+<script>
+  //AGREGAR LA IP DEL HOST, NO SOLO localhost si esta en el mismo host que la app django ejemplo:
+  //const socket = io('http://192.168.42.103:8080');
+  const socket = io('http://localhost:8080');
+  //Va al final de la conversacion
+  window.onload = function() {
+    setTimeout(function() {
+        var chatBox = document.getElementById("messages");
+        chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
+    }, 200);  // Delay 200ms
+  };
+
+  //Muestra mensaje recibido del backend
+  socket.on("message", function(data) {
+    // Chequea si este mensaje es una respuesta a un mensaje enviado(messageId)
+    if (data.messageId) {
+      // Encuentra la respuesta si existe
+      const responseElement = document.getElementById('receiver-response-'+data.messageId);
+      
+      if (responseElement) {
+        // Actualiza el mensaje del LLM
+        responseElement.innerHTML = data.receiver_response;
+        
+        // Scroll para que sea visible
+        var chatBox = document.getElementById("messages");
+        chatBox.scrollTop = chatBox.scrollHeight;
+        return; // Sale para prevenir duplicacion
+      }
+    }
+    
+    // Fallback si messageId no esta presente
+    var chatBox = document.getElementById("messages");
+    
+    // Crea un nuevo hilo de mensajes
+    chatBox.innerHTML += "<div class='message-thread'>"
+                        // Mensaje del usuario
+                        +"<div class='card'>"
+                        +"<div class='card-header'>"
+                          +"<h6 class='card-title text-end' id='sender-name'>"+`${data.username}`+"</h6>"
+                        +"</div>"
+                        +"<div class='card-body' id='sender-content'>"
+                          +`${data.sender_content}`
+                        +"</div>"
+                      +"</div>"
+                      +"<div class='vr'></div>"
+                      // Respuesta LLM
+                      +"<div class='card'>"
+                        +"<div class='card-header'>"
+                          +"<h6 class='card-title' id='receiver-name'>"+`${data.receiver}`+"</h6>"
+                        +"</div>"
+                        +"<div class='card-body'>"
+                          +`${data.receiver_response}`
+                        +"</div>"
+                      +"</div>"
+                      +"<div style='font-size: 12px; color: #6b7280; margin-top: 10px; text-align: right;'>"
+                        + new Date().toLocaleTimeString() +
+                      "</div>"
+                      +"<br>"
+                      +"</div>";
+
+    // Va al final
+    chatBox.scrollTop = chatBox.scrollHeight;
+  });
+  //Envia mensaje a backend
+  function sendMessage() {
+    var username = document.getElementById("username").textContent;
+    var messageText = document.getElementById("message").value;
+    var modelValue = document.getElementById("models").value;
+    var modelText = document.getElementById("models").options[document.getElementById("models").selectedIndex].text;
+    
+    if (messageText.trim() === "") return; // No permite enviar mensajes vacíos
+    
+    var chatBox = document.getElementById("messages");
+    const messageId = Date.now();
+    
+    // Crea un container para este mensaje con un atributo  para encontrarlo luego
+    chatBox.innerHTML += "<div class='message-thread' data-message-id='"+messageId+"'>"
+                        // Mensaje del usuario
+                        +"<div class='card'>"
+                        +"<div class='card-header'>"
+                          +"<h6 class='card-title text-end' id='sender-name'>"+username+"</h6>"
+                        +"</div>"
+                        +"<div class='card-body' id='sender-content'>"
+                          +messageText
+                        +"</div>"
+                      +"</div>"
+                      +"<div class='vr'></div>"
+                      // Respuesta del LLM
+                      +"<div class='card'>"
+                        +"<div class='card-header'>"
+                          +"<h6 class='card-title' id='receiver-name'>"+modelText+"</h6>"
+                        +"</div>"
+                        +"<div class='card-body' id='receiver-response-"+messageId+"'>"
+                          +"<div class='d-flex justify-content-center'>"
+                            +"<div class='spinner-border text-primary' role='status'>"
+                              +"<span class='visually-hidden'>Loading...</span>"
+                            +"</div>"
+                          +"</div>"
+                        +"</div>"
+                      +"</div>"
+                      +"<div style='font-size: 12px; color: #6b7280; margin-top: 10px; text-align: right;'>"
+                        + new Date().toLocaleTimeString() +
+                      "</div>"
+                      +"<br>"
+                      +"</div>"; // Close message-thread div
+    
+    // Va hacia abajo para mostrar el ultimo mensaje y spinner
+    chatBox.scrollTop = chatBox.scrollHeight;
+    
+    //Envia mensaje al backend con messageId
+    var message = {
+      "username": username,
+      "sender_content": messageText,
+      "receiver": modelValue,
+      "messageId": messageId // Incluye messageId para identificar
+    };
+    
+    socket.send(message);
+    document.getElementById("message").value = ""; // Limpia el campo input
+  }
+
+  // Envia mensaje con Enter (permite Shift+Enter para nueva linea)
+  const messageInput = document.getElementById('message');
+  messageInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  let recognition;
+  let isRecording = false;
+
+  function sendVoiceMessage() {
+    const voiceButton = document.getElementById("voice-message");
+
+    if (!isRecording) {
+      // ✅ Start recording
+      if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+        recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = "es-ES"; // Set language to Spanish (change if needed)
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = function () {
+          console.log("🎙️ Recording started...");
+          voiceButton.classList.add("btn-danger"); // Change color to indicate recording
+        };
+
+        recognition.onresult = function (event) {
+          let transcript = event.results[0][0].transcript;
+          console.log("📢 Recognized:", transcript);
+
+          // Insert recognized text into chat
+          document.getElementById("message").value = transcript;
+
+          // Automatically send the message
+          //sendMessage();
+        };
+
+        recognition.onerror = function (event) {
+          console.error("Error:", event.error);
+        };
+
+        recognition.onend = function () {
+          console.log("🛑 Recording stopped.");
+          voiceButton.classList.remove("btn-danger"); // Reset button color
+          isRecording = false;
+        };
+
+        recognition.start();
+        isRecording = true;
+      } else {
+        alert("Tu navegador no soporta reconocimiento de voz. Intenta con Chrome o Edge.");
+      }
+    } else {
+      // ✅ Stop recording if already started
+      recognition.stop();
+      isRecording = false;
+    }
+  }
+
+  // Calcula tiempo para estadisticas
+  let startTime = Date.now();
+
+  window.addEventListener("beforeunload", function () {
+    const durationMs = Date.now() - startTime;
+    const durationHours = (durationMs / (1000 * 60 * 60)).toFixed(3);  // En horas
+
+    navigator.sendBeacon("/track-session/", JSON.stringify({
+        page: "chat",  // Django variable
+        duration: durationHours
+    }));
+  });
+  
+</script>
+{% endblock %}

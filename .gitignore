@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.log
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+
+# Variables y secretos
+.env
+.env.*
+!.env.example
+
+# Django
+db.sqlite3
+frontend/djtesis/media/
+staticfiles/
+
+# Flask - Datos generados
+backend/chroma_dbs/
+backend/uploads/
+backend/pdfs/
+backend/exports/
+backend/images/
+backend/generated_questions.*
+backend/testing/test_dbs/
+
+# Scripts de pruebas pendientes de revisar
+backend/testing/app2.py
+backend/testing/rag.py
+
+# Archivos del editor
+.vscode/
+.idea/
+
+# Sistema operativo
+.DS_Store

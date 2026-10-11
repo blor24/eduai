@@ -1,0 +1,376 @@
+{% extends "tesis/base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block section %}Dashboard{% endblock %}
+
+{% block content %}
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert {{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">Bienvenido {{ user }}</h2>
+            <p class="text-muted">Aquí tienes un resumen de tu actividad de aprendizaje</p>
+        </div>
+    </div>
+
+    <!-- Stats Cards Row -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-journal-bookmark text-primary" style="font-size: 2rem;"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <div class="fw-bold text-primary fs-4">{{ stats.total_files }}</div>
+                            <div class="text-muted small">Archivos subidos</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-chat-dots text-success" style="font-size: 2rem;"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <div class="fw-bold text-success fs-4">{{ stats.total_messages }}</div>
+                            <div class="text-muted small">Mensajes con IA</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-pencil-square text-warning" style="font-size: 2rem;"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <div class="fw-bold text-warning fs-4">{{ stats.total_exams }}</div>
+                            <div class="text-muted small">Exámenes realizados</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-trophy text-danger" style="font-size: 2rem;"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <div class="fw-bold text-danger fs-4">{{ stats.avg_score }}%</div>
+                            <div class="text-muted small">Puntaje promedio</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-graph-up text-primary me-2"></i>
+                        Progreso de Aprendizaje (Últimos 7 días)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="progressChart" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-pie-chart text-success me-2"></i>
+                        Tipos de Archivo
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if file_types %}
+                        <canvas id="fileTypesChart" height="100"></canvas>
+                    {% else %}
+                        <div class="text-center text-muted">
+                            <i class="bi bi-file-earmark" style="font-size: 3rem;"></i>
+                            <p class="mt-2">No hay archivos subidos aún</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity and Stats Row -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock-history text-info me-2"></i>
+                        Actividad Reciente
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_activities %}
+                        <div class="list-group list-group-flush">
+                            {% for activity in recent_activities %}
+                                <div class="list-group-item px-0 py-2">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="bi {{ activity.icon }} text-{{ activity.color }} me-2"></i>
+                                            <span>{{ activity.title }}</span>
+                                        </div>
+                                        <small class="text-muted">{{ activity.time|timesince }} ago</small>
+                                    </div>
+                                    {% if activity.extra %}
+                                        <small class="text-muted ms-4">{{ activity.extra }}</small>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted">
+                            <i class="bi bi-clock-history" style="font-size: 3rem;"></i>
+                            <p class="mt-2">No hay actividad reciente</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-bar-chart text-secondary me-2"></i>
+                        Estadísticas de Estudio
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <div class="border-end">
+                                <div class="fs-4 fw-bold text-primary">{{ stats.total_study_time }}h</div>
+                                <div class="text-muted small">Tiempo total de estudio</div>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="fs-4 fw-bold text-success">{{ stats.total_chat_time }}h</div>
+                            <div class="text-muted small">Tiempo en chat</div>
+                        </div>
+                    </div>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <div class="fs-4 fw-bold text-warning">{{ stats.recent_files }}</div>
+                                <div class="text-muted small">Archivos (último mes)</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="fs-4 fw-bold text-danger">{{ stats.active_days }}</div>
+                            <div class="text-muted small">Días activos</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-lightning text-warning me-2"></i>
+                        Acciones Rápidas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <a href="/dashboard/archivos" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-upload me-2"></i>Subir Archivo
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="/dashboard/chat" class="btn btn-outline-success w-100">
+                                <i class="bi bi-chat-dots me-2"></i>Iniciar Chat
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="/dashboard/examen" class="btn btn-outline-info w-100">
+                                <i class="bi bi-pencil-square me-2"></i>Hacer examen
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="/dashboard/generar" class="btn btn-outline-dark w-100">
+                                <i class="bi bi-file-earmark-plus me-2"></i>Generar PDF
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script>
+        // Chart data from Django view
+        const chartData = JSON.parse('{{ chart_data|escapejs }}');
+
+        // Progress Chart (Line Chart)
+        const progressCtx = document.getElementById('progressChart').getContext('2d');
+        const progressChart = new Chart(progressCtx, {
+            type: 'line',
+            data: {
+                labels: chartData.progress_labels,
+                datasets: [{
+                    label: 'Puntaje Promedio (%)',
+                    data: chartData.progress_scores,
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }, {
+                    label: 'Tiempo de Estudio (hrs)',
+                    data: chartData.progress_study_time,
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    yAxisID: 'y1'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Puntaje (%)'
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Tiempo (hrs)'
+                        },
+                        grid: {
+                            drawOnChartArea: false,
+                        },
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.dataset.label.includes('Puntaje')) {
+                                    label += context.parsed.y + '%';
+                                } else {
+                                    label += context.parsed.y + 'h';
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // File Types Chart (Doughnut Chart)
+        if (chartData.file_types_labels && chartData.file_types_labels.length > 0) {
+            const fileTypesCtx = document.getElementById('fileTypesChart').getContext('2d');
+            const fileTypesChart = new Chart(fileTypesCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: chartData.file_types_labels,
+                    datasets: [{
+                        data: chartData.file_types_data,
+                        backgroundColor: [
+                            'rgba(54, 162, 235, 0.8)',
+                            'rgba(255, 99, 132, 0.8)',
+                            'rgba(255, 205, 86, 0.8)',
+                            'rgba(75, 192, 192, 0.8)',
+                            'rgba(153, 102, 255, 0.8)',
+                            'rgba(255, 159, 64, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(255, 205, 86, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)',
+                            'rgba(255, 159, 64, 1)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 10,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((context.parsed * 100) / total).toFixed(1);
+                                    return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>     
+{% endblock %}

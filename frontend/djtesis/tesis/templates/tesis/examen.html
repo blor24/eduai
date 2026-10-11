@@ -1,0 +1,292 @@
+{% extends "tesis/base.html" %} 
+{% block title %}Examen{% endblock %} 
+{% block section %}Examen{% endblock %} 
+
+{% block content %}
+
+{% if messages %}
+  {% for message in messages %}
+      <div class="alert {{ message.tags }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+  {% endfor %}
+{% endif %}
+
+<div class="container border-bottom mb-3">
+  <form id="generarForm" method="post" class="needs-validation" novalidate>
+    {% csrf_token %}
+    <div class="row row-cols-4">
+      <div class="col">
+        <select id="archivoSelect" name="archivoSelect" class="form-select" aria-label="Seleccione archivos" required>
+          <option value="">Seleccione un archivo</option>
+          {% for item in subidos %}
+            <option value="{{item.id}}">{{item.nombre}}</option>
+          {% endfor %}
+        </select>
+        <div class="invalid-feedback">
+          Por favor seleccione un archivo.
+        </div>
+      </div>
+      <div class="col">
+        <input
+          type="number"
+          class="form-control"
+          id="numPreguntas"
+          name="numPreguntas"
+          placeholder="Ingrese el número de preguntas"
+          min="1"
+          required
+        />
+        <div class="invalid-feedback">
+          Por favor ingrese un número positivo.
+        </div>
+      </div>
+      <div class="col">
+        <div class="form-check">
+          <input
+            class="form-check-input checkbox-tipo"
+            type="checkbox"
+            name="tipoPregunta"
+            value="multiple"
+            id="checkMultiple"
+          />
+          <label class="form-check-label" for="checkMultiple">
+            Selección múltiple
+          </label>
+        </div>
+        <div class="form-check">
+          <input
+            class="form-check-input checkbox-tipo"
+            type="checkbox"
+            name="tipoPregunta"
+            value="espacio"
+            id="checkEspacio"
+          />
+          <label class="form-check-label" for="checkEspacio"> 
+            Llenar espacio 
+          </label>
+        </div>
+        <div class="form-check">
+          <input
+            class="form-check-input checkbox-tipo"
+            type="checkbox"
+            name="tipoPregunta"
+            value="emparejar"
+            id="checkEmparejar"
+          />
+          <label class="form-check-label" for="checkEmparejar"> 
+            Emparejar 
+          </label>
+        </div>
+        <div class="form-check">
+          <input
+            class="form-check-input checkbox-tipo"
+            type="checkbox"
+            name="tipoPregunta"
+            value="corta"
+            id="checkCorta"
+          />
+          <label class="form-check-label" for="checkCorta"> 
+            Respuesta corta 
+          </label>
+        </div>
+        <div class="invalid-feedback" id="checkboxFeedback">
+          Por favor seleccione al menos un tipo de pregunta.
+        </div>
+      </div>
+      <div class="col d-flex align-items-center">
+        <button type="submit" id="btnGenerar" name="generate_quiz" class="btn btn-success" disabled>Generar examen</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+
+{% if ready == 1%}
+  <h2>Examen generado</h2>
+  <form method="POST">
+    {% csrf_token %}
+    {% for tipo, data in preguntas.items %}
+      <h4 class="text-primary mt-4">{{ tipo|title }}</h4>
+      
+      {% for question in data.questions %}
+        {% with q_idx=forloop.counter0 %}
+        <div class="card mb-3">
+          <div class="card-body">
+            <p><strong>{{ question.question }}</strong></p>
+
+            {% if question.options %}
+              <!-- Multiple-choice -->
+              {% for option in question.options %}
+                <div class="form-check">
+                  <input class="form-check-input" type="radio"
+                        name="q_{{ tipo }}_{{ q_idx }}"
+                        id="q_{{ tipo }}_{{ q_idx }}_{{ forloop.counter }}"
+                        value="{{ option }}" required>
+                  <label class="form-check-label" for="q_{{ tipo }}_{{ q_idx }}_{{ forloop.counter }}">
+                    {{ option }}
+                  </label>
+                </div>
+              {% endfor %}
+
+            {% elif question.terms and question.concepts %}
+              <!-- Matching -->
+              {% for term in question.terms %}
+                <div class="mb-2">
+                  <label><strong>{{ term }}</strong></label>
+                  <select class="form-select"
+                          name="q_{{ tipo }}_{{ q_idx }}_{{ forloop.counter0 }}"
+                          required>
+                    <option value="">Selecciona una opción</option>
+                    {% for concept in question.concepts %}
+                      <option value="{{ concept }}">{{ concept }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              {% endfor %}
+
+            {% else %}
+              <!-- Short-answer or fill-in-the-blank -->
+              <input type="text"
+                    class="form-control"
+                    name="q_{{ tipo }}_{{ q_idx }}"
+                    required>
+            {% endif %}
+          </div>
+        </div>
+        {% endwith %}
+      {% endfor %}
+    {% endfor %}
+
+    <!-- Button trigger modal -->
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
+      Enviar respuestas
+    </button>
+
+    <!-- Modal -->
+    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h1 class="modal-title fs-5" id="exampleModalLabel">Enviar respuestas</h1>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            ¿Está seguro de enviar las respuestas?
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" name="submit_quiz" onclick="trackingEnabled = false;" class="btn btn-success">Aceptar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+{% endif %}
+
+<script>
+  // Espera a que se cargue por completo el DOM (Document Object Model)
+  document.addEventListener('DOMContentLoaded', function() {
+    // Obtiene el formulario y los botones
+    const form = document.getElementById('generarForm');
+    const btnGenerar = document.getElementById('btnGenerar');
+    const checkboxes = document.querySelectorAll('.checkbox-tipo');
+    const selectArchivo = document.getElementById('archivoSelect');
+    const numPreguntas = document.getElementById('numPreguntas');
+    const checkboxFeedback = document.getElementById('checkboxFeedback');
+    
+    // Funcion para validar el formulario y actulizar el estado del boton 
+    function validateForm() {
+      let isValid = true;
+
+      // Valida la seleccion del archivo
+      if (selectArchivo.value === '') {
+        selectArchivo.classList.add('is-invalid');
+        isValid = false;
+      } else {
+        selectArchivo.classList.remove('is-invalid');
+        selectArchivo.classList.add('is-valid');
+      }
+
+      // Valida la entrada del numero
+      const numValue = parseInt(numPreguntas.value);
+      if (isNaN(numValue) || numValue < 1) {
+        numPreguntas.classList.add('is-invalid');
+        isValid = false;
+      } else {
+        numPreguntas.classList.remove('is-invalid');
+        numPreguntas.classList.add('is-valid');
+      }
+
+      // Valida que al menos 1 checkox este escogido
+      let oneChecked = false;
+      checkboxes.forEach(function(checkbox) {
+        if (checkbox.checked) {
+          oneChecked = true;
+        }
+      });
+
+      if (!oneChecked) {
+        checkboxes.forEach(checkbox => checkbox.classList.add('is-invalid'));
+        checkboxFeedback.style.display = 'block';
+        isValid = false;
+      } else {
+        checkboxes.forEach(checkbox => {
+          checkbox.classList.remove('is-invalid');
+          if (checkbox.checked) {
+            checkbox.classList.add('is-valid');
+          }
+        });
+        checkboxFeedback.style.display = 'none';
+      }
+
+      // Activa el boton
+      btnGenerar.disabled = !isValid;
+
+      return isValid;
+    }
+    
+    // Añade event listeners para todos los controles
+    selectArchivo.addEventListener('change', validateForm);
+    numPreguntas.addEventListener('input', validateForm);
+    checkboxes.forEach(function(checkbox) {
+      checkbox.addEventListener('change', validateForm);
+    });
+    
+    // Validación inicial
+    validateForm();
+
+    // Calcula tiempo una vez que se genera el examen
+    const quizForm = document.querySelector('form button[name="submit_quiz"]');
+
+    if (quizForm) {
+        let startTime = Date.now();
+        let trackingEnabled = true;
+
+        window.addEventListener("beforeunload", function () {
+          if (!trackingEnabled) return;
+
+          const durationMs = Date.now() - startTime;
+          const durationHours = (durationMs / (1000 * 60 * 60));
+          
+          // Evita enviar duracion trivial
+          if (durationHours < (10 / 3600)) return;
+
+          navigator.sendBeacon("/track-session/", JSON.stringify({
+              page: "examen",
+              duration: durationHours.toFixed(3)
+          }));
+
+          console.log("Tracked session duration:", durationHours.toFixed(3));
+        });
+    }
+  });
+  window.onload = function () {
+    if (window.performance && window.performance.navigation.type === 2) {
+      // Reload if accessed via back button
+      window.location.href = window.location.href;
+    }
+  };
+</script>
+{% endblock %}

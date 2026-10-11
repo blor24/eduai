@@ -1,0 +1,60 @@
+{% extends "tesis/base.html" %}
+{% block title %}Resultados{% endblock %}
+{% block section %}Resultados{% endblock %}
+
+{% block content %}
+  
+    <h2>Resultados del examen</h2>
+    <p>Obtuviste <strong>{{ puntaje }}/{{ total }}</strong> respuestas correctas.</p>
+
+
+    {% for r in resultados %}
+      <div class="card mb-3 {% if r.is_correct %}border-success{% else %}border-danger{% endif %}">
+        <div class="card-body">
+          <p><strong>{{ r.question }}</strong></p>
+
+          {% if r.pairs %}
+            <p><strong>Emparejamiento:</strong></p>
+            <ul>
+              {% for pair in r.pairs %}
+                <li>
+                  {{ pair.term }} →
+                  <span class="{% if pair.user == pair.correct %}text-success{% else %}text-danger{% endif %}">
+                    {{ pair.user }}
+                  </span>
+                  {% if pair.user != pair.correct %}
+                    (Correcto: {{ pair.correct }})
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+            <p><strong>Explicación:</strong> {{ r.explanation }}</p>
+
+          {% else %}
+            {% if r.options %}
+              <p><strong>Opciones:</strong></p>
+              <ul>
+                {% for opt in r.options %}
+                  <li>{{ opt }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+
+            <p><strong>Tu respuesta:</strong>
+              <span class="{% if r.is_correct %}text-success{% else %}text-danger{% endif %}">
+                {{ r.user_answer }}
+              </span>
+            </p>
+
+            {% if not r.is_correct %}
+              <p><strong>Respuesta correcta:</strong> {{ r.correct_answer }}</p>
+            {% endif %}
+
+            <p><strong>Explicación:</strong> {{ r.explanation }}</p>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+
+</div>
+{% endblock %}

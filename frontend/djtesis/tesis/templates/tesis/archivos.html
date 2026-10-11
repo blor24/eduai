@@ -1,0 +1,115 @@
+{% extends "tesis/base.html" %}
+{% block title %}Archivos{% endblock %}
+{% block section %}Archivos{% endblock %}
+
+{% block content %}
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert {{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+
+<div class="container">
+  <form class="row g-3" method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="col-auto">
+      <input class="form-control" type="file" id="formFile" name="file">
+    </div>
+    <div class="col-auto">
+      <button type="submit" id="submitBtn" name="upload_submit" class="btn btn-primary mb-3" disabled>Cargar archivo</button>
+    </div>
+  </form>
+  <div class="row">
+    <div class="col">
+      <input type="text" id="searchInput" class="form-control" placeholder="Buscar archivos...">
+    </div>
+  </div>
+</div>
+
+<table class="table" id="archivos">
+  <thead>
+    <tr>
+      <th scope="col">Nombre</th>
+      <th scope="col">Tipo</th>
+      <th scope="col">Fecha de carga</th>
+      <th scope="col">Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in subidos %}
+      <tr>
+        <td>{{item.nombre}}</td>
+        <td>{{item.tipo}}</td>
+        <td>{{item.fecha_carga}}</td>
+        <td><button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#archivoModal" data-id="{{ item.id }}" data-nombre="{{ item.nombre }}"><i class="bi bi-trash3"></i></button>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Modal -->
+<div class="modal fade" id="archivoModal" tabindex="-1" aria-labelledby="archivoModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST">
+      {% csrf_token %}
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="archivoModalLabel">Eliminar</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          ¿Está seguro de eliminar el archivo? El modelo no podrá acceder al contenido una vez eliminado.
+          <!-- Input oculto para los datos.-->
+          <input type="hidden" id="idInput" name="id-archivo" value="">
+          <input type="hidden" id="nombreInput" name="nombre-archivo" value="">
+          
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" name="delete_submit" class="btn btn-outline-danger">Eliminar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  document.getElementById('searchInput').addEventListener('keyup', function() {
+      const searchValue = this.value.toLowerCase();
+      const rows = document.querySelectorAll('#archivos tbody tr');
+      
+      rows.forEach(row => {
+          const rowText = row.textContent.toLowerCase();
+          row.style.display = rowText.includes(searchValue) ? '' : 'none';
+      });
+  });
+
+  document.getElementById("formFile").addEventListener("change", function() {
+    document.getElementById("submitBtn").disabled = !this.files.length;
+  });
+
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var archivoModal = document.getElementById('archivoModal');
+    archivoModal.addEventListener('show.bs.modal', function (event) {
+      // Boton que abre el modal
+      var button = event.relatedTarget;
+      // Extrae los datos del atributo data-*
+      var itemId = button.getAttribute('data-id');
+      var itemNombre = button.getAttribute('data-nombre');
+
+      // Actuliza los inputs con el contenido del botón
+      var nombreInput = document.getElementById('nombreInput');
+      var idInput = document.getElementById('idInput');
+
+      idInput.value = itemId
+      nombreInput.value = itemNombre;
+    });
+  });
+</script>
+{% endblock %}

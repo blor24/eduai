@@ -1,0 +1,211 @@
+{% extends "tesis/base.html" %} 
+{% block title %}Generar preguntas{% endblock %}
+{% block section %}Generar preguntas{% endblock %} 
+
+{% block content %}
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert {{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+
+<div class="container border-bottom mb-3">
+  <form id="generarForm" method="post" class="needs-validation" novalidate>
+    {% csrf_token %}
+    <div class="row row-cols-4">
+      <div class="col">
+        <select id="archivoSelect" name="archivoSelect" class="form-select" aria-label="Seleccione archivos" required>
+          <option value="">Seleccione un archivo</option>
+          {% for item in subidos %}
+            <option value="{{item.id}}">{{item.nombre}}</option>
+          {% endfor %}
+        </select>
+        <div class="invalid-feedback">
+          Por favor seleccione un archivo.
+        </div>
+      </div>
+      <div class="col">
+        <input
+          type="number"
+          class="form-control"
+          id="numPreguntas"
+          name="numPreguntas"
+          placeholder="Ingrese el número de preguntas"
+          min="1"
+          required
+        />
+        <div class="invalid-feedback">
+          Por favor ingrese un número positivo.
+        </div>
+      </div>
+      <div class="col">
+        <div class="form-check">
+          <input
+            class="form-check-input checkbox-tipo"
+            type="checkbox"
+            name="tipoPregunta"
+            value="multiple"
+            id="checkMultiple"
+          />
+          <label class="form-check-label" for="checkMultiple">
+            Selección múltiple
+          </label>
+        </div>
+        <div class="form-check">
+          <input
+            class="form-check-input checkbox-tipo"
+            type="checkbox"
+            name="tipoPregunta"
+            value="espacio"
+            id="checkEspacio"
+          />
+          <label class="form-check-label" for="checkEspacio"> 
+            Llenar espacio 
+          </label>
+        </div>
+        <div class="form-check">
+          <input
+            class="form-check-input checkbox-tipo"
+            type="checkbox"
+            name="tipoPregunta"
+            value="emparejar"
+            id="checkEmparejar"
+          />
+          <label class="form-check-label" for="checkEmparejar"> 
+            Emparejar 
+          </label>
+        </div>
+        <div class="form-check">
+          <input
+            class="form-check-input checkbox-tipo"
+            type="checkbox"
+            name="tipoPregunta"
+            value="corta"
+            id="checkCorta"
+          />
+          <label class="form-check-label" for="checkCorta"> 
+            Respuesta corta 
+          </label>
+        </div>
+        <div class="invalid-feedback" id="checkboxFeedback">
+          Por favor seleccione al menos un tipo de pregunta.
+        </div>
+      </div>
+      <div class="col d-flex align-items-center">
+        <button type="submit" id="btnGenerar" class="btn btn-success" disabled>Generar archivo</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- <object data="/media/pdfs/damian/philo/generated_questions.pdf" type="application/pdf" width="100%" height="800px">
+    <iframe src="/media/pdfs/damian/philo/generated_questions.pdf" width="100%" height="800px" style="border: none;">
+      <p>Tu navegador no soporta la vista de PDF.
+        <a href="/media/pdfs/damian/philo/generated_questions.pdf" target="_blank">Haz clic aquí para descargarlo.</a>
+      </p>
+    </iframe>
+  </object>
+ -->
+
+{% if pdf_url %}
+  <h2 class="mt-4">Vista previa del PDF generado</h2>
+  <div class="container text-center">
+    <div class="row align-items-start">
+      <div class="col">
+        <a href="{{ pdf_url }}" class="btn btn-danger" target="_blank"><i class="bi bi-filetype-pdf"></i>Descargar PDF</a>
+      </div>
+      <div class="col">
+        <a href="{{ docx_url }}" class="btn btn-primary" target="_blank"><i class="bi bi-file-earmark-word"></i>Descargar DOCX</a>
+      </div>
+    </div>
+  </div>
+  <object data="{{ pdf_url }}" type="application/pdf" width="100%" height="800px">
+    <iframe src="{{ pdf_url }}" width="100%" height="800px" style="border: none;">
+      <p>Tu navegador no soporta la vista de PDF.
+        <a href="{{ pdf_url }}" target="_blank">Haz clic aquí para descargarlo.</a>
+      </p>
+    </iframe>
+  </object>
+{% endif %}
+
+<script>
+  // Espera a que se cargue por completo el DOM (Document Object Model)
+  document.addEventListener('DOMContentLoaded', function() {
+    // Obtiene el formulario y los botones
+    const form = document.getElementById('generarForm');
+    const btnGenerar = document.getElementById('btnGenerar');
+    const checkboxes = document.querySelectorAll('.checkbox-tipo');
+    const selectArchivo = document.getElementById('archivoSelect');
+    const numPreguntas = document.getElementById('numPreguntas');
+    const checkboxFeedback = document.getElementById('checkboxFeedback');
+    
+    // Funcion para validar el formulario y actulizar el estado del boton 
+    function validateForm() {
+      let isValid = true;
+
+      // Valida la seleccion del archivo
+      if (selectArchivo.value === '') {
+        selectArchivo.classList.add('is-invalid');
+        isValid = false;
+      } else {
+        selectArchivo.classList.remove('is-invalid');
+        selectArchivo.classList.add('is-valid');
+      }
+
+      // Valida la entrada del numero
+      const numValue = parseInt(numPreguntas.value);
+      if (isNaN(numValue) || numValue < 1) {
+        numPreguntas.classList.add('is-invalid');
+        isValid = false;
+      } else {
+        numPreguntas.classList.remove('is-invalid');
+        numPreguntas.classList.add('is-valid');
+      }
+
+      // Valida que al menos 1 checkox este escogido
+      let oneChecked = false;
+      checkboxes.forEach(function(checkbox) {
+        if (checkbox.checked) {
+          oneChecked = true;
+        }
+      });
+
+      if (!oneChecked) {
+        checkboxes.forEach(checkbox => checkbox.classList.add('is-invalid'));
+        checkboxFeedback.style.display = 'block';
+        isValid = false;
+      } else {
+        checkboxes.forEach(checkbox => {
+          checkbox.classList.remove('is-invalid');
+          if (checkbox.checked) {
+            checkbox.classList.add('is-valid');
+          }
+        });
+        checkboxFeedback.style.display = 'none';
+      }
+
+      // Activa el boton
+      btnGenerar.disabled = !isValid;
+
+      return isValid;
+    }
+    
+    // Añade event listeners para todos los controles
+    selectArchivo.addEventListener('change', validateForm);
+    numPreguntas.addEventListener('input', validateForm);
+    checkboxes.forEach(function(checkbox) {
+      checkbox.addEventListener('change', validateForm);
+    });
+    
+    // Validación inicial
+    validateForm();
+  });
+</script>
+
+
+{% endblock %}

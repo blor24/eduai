@@ -1,0 +1,214 @@
+{% load widget_tweaks %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduAI - Tu compañero de aprendizaje</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <link rel ="icon" href="data:image/x-icon;base64,AAABAAEAEBACAAEAAQCwAAAAFgAAACgAAAAQAAAAIAAAAAEAAQAAAAAAQAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAA////AP//AAD/7wAA/88AAPgBAAD0AQAA8+EAAIQRAAC/0QAAv9EAAL/RAAC/0QAAv98AAL/fAACAHwAA//8AAP//AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" type="image/x-icon">
+    <style>
+        .password-toggle {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .password-toggle input {
+            flex: 1;
+        }
+
+        .password-toggle .toggle-icon {
+            position: absolute;
+            right: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="/">✨EduAI</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#loginModal">Entrar</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#registerModal">Registrarse</button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="bg-primary text-white text-center py-5">
+        <div class="container">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert {{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            <h1 class="display-4">EduAI: Tu compañero de aprendizaje</h1>
+            <p class="lead">Tutoría inteligente basada en inteligencia artificial al alcance de su mano</p>
+            <button class="btn btn-light btn-lg mt-3" data-bs-toggle="modal" data-bs-target="#registerModal">Empieza gratis</button>
+        </div>
+    </header>
+
+    <!-- Features Section -->
+    <section id="features" class="py-5">
+        <div class="container">
+            <h2 class="text-center mb-4">¿Por qué elegir EduAI?</h2>
+            <div class="row">
+                <div class="col-md-4 text-center">
+                    <i class="bi bi-book fs-1 text-primary mb-3"></i>
+                    <h3>Aprendizaje personalizado</h3>
+                    <p>Tutoría adaptativa adaptada a su estilo de aprendizaje</p>
+                </div>
+                <div class="col-md-4 text-center">
+                    <i class="bi bi-chat-dots fs-1 text-primary mb-3"></i>
+                    <h3>Asistencia interactiva</h3>
+                    <p>Preguntas y respuestas en tiempo real sobre múltiples temas</p>
+                </div>
+                <div class="col-md-4 text-center">
+                    <i class="bi bi-graph-up fs-1 text-primary mb-3"></i>
+                    <h3>Seguimiento del progreso</h3>
+                    <p>Supervise su proceso de aprendizaje con información detallada</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Login Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Iniciar sesión</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" autocomplete="off">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Usuario</label>
+                            {{ login_form.username }}
+                          </div>
+                          <div class="mb-3">
+                            <label for="password" class="form-label">Contraseña <i id="toggleIcon" class="bi bi-eye toggle-icon" onclick="togglePassword()"></i></label>
+                            {{ login_form.password }}
+                          </div>
+                          <button type="submit" class="btn btn-primary" name="login_submit">Ingresar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div class="modal fade" id="registerModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Crea tu cuenta</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" autocomplete="off" name="registro">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="register-username" class="form-label">Usuario</label>
+                            {% render_field register_form.username class="form-control"%}
+                            <span id="usernameHelpInline" class="form-text">
+                                Obligatorio. 150 caracteres o menos. Sólo letras, dígitos y @/./+/-/_.
+                            </span>
+
+                            <label for="register-email" class="form-label">Correo electrónico</label>
+                            {% render_field register_form.email class="form-control"%}
+
+                            <label for="register-password1" class="form-label">Contraseña <i id="toggleIcon" class="bi bi-eye toggle-icon" onclick="togglePassword()"></i></label>
+                            <div class="input-group">
+                                {% render_field register_form.password1 class="form-control" id="register-password1" %}
+                                <span class="input-group-text" onclick="toggleRegisterPassword('register-password1', 'toggleIcon1')">
+                                    <i id="toggleIcon1" class="bi bi-eye toggle-icon"></i>
+                                </span>
+                            </div>
+                            <span id="passwordHelpInline" class="form-text">
+                                <ul>
+                                    <li>Tu contraseña no puede ser demasiado parecida a tus otros datos personales.</li>
+                                    <li>Tu contraseña debe contener al menos 8 caracteres.</li>
+                                    <li>Tu contraseña no puede ser una contraseña de uso común.</li>
+                                    <li>Tu contraseña no puede ser totalmente numérica.</li>
+                                </ul>
+                            </span>
+                            <label for="register-password2" class="form-label">Confirmar contraseña </label>
+                            <div class="input-group">
+                                {% render_field register_form.password2 class="form-control" id="register-password2" %}
+                                <span class="input-group-text" onclick="toggleRegisterPassword('register-password2', 'toggleIcon2')">
+                                    <i id="toggleIcon2" class="bi bi-eye toggle-icon"></i>
+                                </span>
+                            </div>
+                            <span id="password2HelpInline" class="form-text">
+                                Introduzca la misma contraseña que antes, para la verificación.
+                            </span>
+                          <button type="submit" class="btn btn-primary" name="register_submit">Registrarme</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-light py-3 text-center">
+        <div class="container">
+            <p>&copy; 2025 Universidad Central del Ecuador. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS and Popper.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function togglePassword() {
+            var passwordField = document.querySelector('[name="password"]');
+            var toggleIcon = document.getElementById("toggleIcon");
+            if (passwordField.type === "password") {
+                passwordField.type = "text";
+                toggleIcon.classList.remove("bi-eye");
+                toggleIcon.classList.add("bi-eye-slash");
+            } else {
+                passwordField.type = "password";
+                toggleIcon.classList.remove("bi-eye-slash");
+                toggleIcon.classList.add("bi-eye");
+            }
+        }
+
+        function toggleRegisterPassword(fieldId, iconId){
+            let passwordField = document.getElementById(fieldId);
+            let icon = document.getElementById(iconId);
+
+            if (passwordField.type === "password") {
+                passwordField.type = "text";
+                icon.classList.remove("bi-eye");
+                icon.classList.add("bi-eye-slash");
+            } else {
+                passwordField.type = "password";
+                icon.classList.remove("bi-eye-slash");
+                icon.classList.add("bi-eye");
+            }
+        }
+    </script>
+</body>
+</html>
