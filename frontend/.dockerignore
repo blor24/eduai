@@ -1,0 +1,10 @@
+.git
+.env
+**/.git/
+**/__pycache__/
+**/*.pyc
+**/.venv/
+**/venv/
+djtesis/db.sqlite3
+djtesis/media/
+djtesis/.vscode/

@@ -90,7 +90,7 @@
 <script>
   //AGREGAR LA IP DEL HOST, NO SOLO localhost si esta en el mismo host que la app django ejemplo:
   //const socket = io('http://192.168.42.103:8080');
-  const socket = io('http://localhost:8080');
+  const socket = io(`${window.location.protocol}//${window.location.hostname}:8080`);
   //Va al final de la conversacion
   window.onload = function() {
     setTimeout(function() {

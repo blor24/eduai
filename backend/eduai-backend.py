@@ -16,6 +16,7 @@ from pathlib import Path
 #from flask_cors import CORS
 ### CONFIGURACIONES
 app = Flask(__name__)
+DJANGO_BASE_URL = os.environ.get("DJANGO_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 
 #Permitir peticiones desde el mismo host
 #CORS(app, origins=['http://192.168.42.103:8000','http://192.168.42.103'])
@@ -158,7 +159,7 @@ def handle_message(msg):
     
     try:
         # Envia mensaje a Django para almacenar el mensaje
-        response = requests.post("http://127.0.0.1:8000/dashboard/chat/save_mensaje/", json=data)
+        response = requests.post(f"{DJANGO_BASE_URL}/dashboard/chat/save_mensaje/", json=data)
          # Debug output
         print(f"Status code: {response.status_code}")
         print(f"Response text: {response.text}")
@@ -243,5 +244,7 @@ def exam():
 if __name__ == "__main__":
     #EJECUTAR DESDE HOST PARA COMPLETAR LA COMUNICACION CON DJANGO
     #socketio.run(app, host="0.0.0.0", port=8080, debug=True)
-    socketio.run(app, host="localhost", port=8080, debug=True)
+    socketio.run(app, host=os.getenv("FLASK_HOST", "127.0.0.1"),
+                 port=int(os.getenv("FLASK_PORT", "8080")),
+                 debug=os.getenv("FLASK_DEBUG", "0") == "1")
     

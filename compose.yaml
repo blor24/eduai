@@ -1,0 +1,58 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      FLASK_HOST: "0.0.0.0"
+      FLASK_PORT: "8080"
+      FLASK_DEBUG: "0"
+      DJANGO_BASE_URL: http://frontend:8000
+      OLLAMA_HOST: http://ollama:11434
+      HF_HOME: /app/.cache/huggingface
+    ports:
+      - "8080:8080"
+    volumes:
+      - backend_uploads:/app/uploads
+      - backend_vectors:/app/chroma_dbs
+      - backend_images:/app/images
+      - backend_exports:/app/exports
+      - backend_pdfs:/app/pdfs
+      - hf_cache:/app/.cache/huggingface
+    depends_on:
+      - ollama
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Debes establecer DJANGO_SECRET_KEY en .env}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-1}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,frontend}
+      DJANGO_DB_PATH: /app/data/db.sqlite3
+      FLASK_BASE_URL: http://backend:8080
+    ports:
+      - "8000:8000"
+    volumes:
+      - django_data:/app/data
+      - django_media:/app/media
+    depends_on:
+      - backend
+
+volumes:
+  ollama_data:
+  backend_uploads:
+  backend_vectors:
+  backend_images:
+  backend_exports:
+  backend_pdfs:
+  hf_cache:
+  django_data:
+  django_media:

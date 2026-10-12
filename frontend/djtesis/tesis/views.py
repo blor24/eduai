@@ -13,6 +13,7 @@ from datetime import datetime
 from django.views.decorators.csrf import csrf_exempt
 import json
 import os
+FLASK_BASE_URL = os.environ.get("FLASK_BASE_URL", "http://localhost:8080").rstrip("/")
 from datetime import datetime, timedelta
 from django.utils import timezone
 from django.conf import settings
@@ -208,7 +209,7 @@ def archivos(request):
             if not username or not file_obj:
                 messages.error(request, JsonResponse({'status': 'error', 'message': 'Falta identficación de usuario o archivo.'}, status=400))
             
-            flask_url = 'http://localhost:8080/upload' 
+            flask_url = f"{FLASK_BASE_URL}/upload" 
             
             # Prepara el payload de datos.
             data = {
@@ -241,7 +242,7 @@ def archivos(request):
             if not username or not filename:
                 messages.error(request, 'Missing username or filename.')
 
-            flask_url = 'http://localhost:8080/delete'
+            flask_url = f"{FLASK_BASE_URL}/delete"
 
             data = {
                 'username': username,
@@ -343,7 +344,7 @@ def examen(request):
             num_preguntas = int(request.POST.get('numPreguntas'))
             tipo_preguntas = request.POST.getlist('tipoPregunta')
 
-            flask_url = 'http://localhost:8080/exam'
+            flask_url = f"{FLASK_BASE_URL}/exam"
             
             data = {
                 'username': username,
@@ -387,7 +388,7 @@ def generar(request):
         num_preguntas = int(request.POST.get('numPreguntas'))
         tipo_preguntas = request.POST.getlist('tipoPregunta')
 
-        flask_url = 'http://localhost:8080/file'
+        flask_url = f"{FLASK_BASE_URL}/file"
 
         data = {
             'username': username,
