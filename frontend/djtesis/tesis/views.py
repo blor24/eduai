@@ -39,8 +39,8 @@ def index(request):
                 messages.success(request, "Cuenta creada. Por favor, inicie sesión")
                 return redirect('index')
             else:
+                # Conserva los errores del formulario para mostrarlos al usuario.
                 messages.warning(request, "Creación fallida. Revise los datos ingresados.")
-                return redirect('index')
         elif 'login_submit' in request.POST: 
             login_form = LoginForm(request, data=request.POST)
             if login_form.is_valid():

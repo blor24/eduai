@@ -109,6 +109,9 @@
                           <div class="mb-3">
                             <label for="password" class="form-label">Contraseña <i id="toggleIcon" class="bi bi-eye toggle-icon" onclick="togglePassword()"></i></label>
                             {{ login_form.password }}
+                            <div class="text-end mt-2 mb-3">
+                                <a href="{% url 'password_reset' %}">¿Olvidaste tu contraseña?</a>
+                            </div>
                           </div>
                           <button type="submit" class="btn btn-primary" name="login_submit">Ingresar</button>
                     </form>
@@ -126,6 +129,16 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    {% if register_form.errors %}
+                    <div class="alert alert-danger" role="alert">
+                        {% for field in register_form %}
+                            {% for error in field.errors %}
+                                <div><strong>{{ field.label }}:</strong> {{ error }}</div>
+                            {% endfor %}
+                        {% endfor %}
+                        {% for error in register_form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+                    </div>
+                    {% endif %}
                     <form method="POST" autocomplete="off" name="registro">
                         {% csrf_token %}
                         <div class="mb-3">
@@ -180,6 +193,13 @@
 
     <!-- Bootstrap JS and Popper.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+    {% if register_form.errors %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('registerModal')).show();
+        });
+    </script>
+    {% endif %}
     <script>
         function togglePassword() {
             var passwordField = document.querySelector('[name="password"]');

@@ -28,4 +28,4 @@ class Mensaje(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Message from {self.sender.username} to {self.receiver.username if self.receiver else 'Unknown'}"
+        return f"Mensaje de {self.sender.username} a {self.receiver or 'asistente'}"
