@@ -18,10 +18,6 @@ hf_embed_models = [
     "sentence-transformers/all-MiniLM-L12-v2" #140
 ]
 
-ollama_models = [
-    "gemma3:4b",            
-    "llama3.2"
-]
 embeddings = HuggingFaceEmbeddings(model_name=hf_embed_models[6])
 
 
@@ -65,18 +61,17 @@ prompt = PromptTemplate(
 )
 
 class ChooseModel:
-    def __init__(self, model: int):
-        self.model = model
+    def __init__(self, model_name: str):
+        self.model_name = model_name
 
     def choose(self):
+        import os
         llm = ChatOllama(
-            model=ollama_models[self.model],
+            model=self.model_name,
             temperature=0.1,
+            base_url=os.getenv('OLLAMA_HOST', 'http://localhost:11434'),
         )
-        # Crea una cadena combinando la plantilla del promp y el LLM
-        rag_chain = prompt | llm | StrOutputParser()
-
-        return rag_chain
+        return prompt | llm | StrOutputParser()
 
 # Clase para aplicación RAG
 class RAGApplication:

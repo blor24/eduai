@@ -53,19 +53,11 @@
     width: 100%;
     min-height: 60px;
   ">
-    <label for="model-dropdown"><abbr title="* Por defecto: LLama 3.2; La «B» significa mil millones y es el recuento de parámetros del modelo. Este es el tamaño del modelo. Los modelos más grandes funcionan mejor que los modelos más pequeños.">Modelo:</abbr></label>
-    <select id="models" style="background-color: white;
-    border: 1px solid var(--border-color);
-    color: var(--text-color);
-    padding: 4px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;" id="model-dropdown">
-        <option value="1" selected>Llama 3.2</option>
-        {% for key, value in models.items %}
-          <option value="{{key}}">{{value}}</option>
-        {% endfor %}
+    <label for="models" title="Modelos instalados en Ollama">Modelo:</label>
+    <select id="models" aria-label="Modelo de Ollama" style="background-color:white; border:1px solid var(--border-color); color:var(--text-color); padding:4px 8px; border-radius:4px; font-size:12px;">
+      {% for model in models %}<option value="{{ model.name }}">{{ model.name }}</option>{% empty %}<option value="">Sin modelos disponibles</option>{% endfor %}
     </select>
+    <span id="models-status" role="status" aria-live="polite" style="font-size:11px;color:#6b7280;margin-left:6px;"></span>
     <input type="text" id="message" class="form-control me-2" placeholder="Escribe un mensaje...">
     <button id="send-button" class="btn btn-success" onclick="sendMessage()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-send" viewBox="0 0 16 16">
       <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76z"/>
@@ -91,6 +83,42 @@
   //AGREGAR LA IP DEL HOST, NO SOLO localhost si esta en el mismo host que la app django ejemplo:
   //const socket = io('http://192.168.42.103:8080');
   const socket = io(`${window.location.protocol}//${window.location.hostname}:8080`);
+  // El selector se sincroniza para todos los usuarios cada 15 segundos.
+  const modelsDropdown = document.getElementById('models');
+  const modelsStatus = document.getElementById('models-status');
+  const sendButton = document.getElementById('send-button');
+  async function refreshAvailableModels() {
+    try {
+      const response = await fetch("{% url 'chat_models' %}", {credentials:'same-origin', cache:'no-store'});
+      if (!response.ok) throw new Error('API de modelos no disponible');
+      const result = await response.json();
+      const names = result.models || [];
+      const previous = modelsDropdown.value;
+      const changed = names.join('\0') !== Array.from(modelsDropdown.options).filter(o => o.value).map(o => o.value).join('\0');
+      if (changed) {
+        modelsDropdown.replaceChildren();
+        if (names.length === 0) {
+          modelsDropdown.add(new Option('Sin modelos disponibles', ''));
+        } else {
+          names.forEach(name => modelsDropdown.add(new Option(name, name)));
+          if (names.includes(previous)) modelsDropdown.value = previous;
+        }
+      }
+      sendButton.disabled = !modelsDropdown.value;
+      modelsStatus.textContent = names.length ? '' : 'Instala un modelo desde Administración.';
+    } catch (error) {
+      modelsStatus.textContent = 'No se pudo consultar Ollama.';
+    }
+  }
+  refreshAvailableModels();
+  setInterval(refreshAvailableModels, 15000);
+  window.addEventListener('focus', refreshAvailableModels);
+  socket.on('model_error', function(data) {
+    const response = document.getElementById('receiver-response-' + data.messageId);
+    if (response) response.textContent = data.error || 'El modelo ya no está disponible.';
+    refreshAvailableModels();
+  });
+
   //Va al final de la conversacion
   window.onload = function() {
     setTimeout(function() {
@@ -158,6 +186,10 @@
     var modelText = document.getElementById("models").options[document.getElementById("models").selectedIndex].text;
     
     if (messageText.trim() === "") return; // No permite enviar mensajes vacíos
+    if (!modelValue) {
+      modelsStatus.textContent = 'No hay modelos disponibles.';
+      return;
+    }
     
     var chatBox = document.getElementById("messages");
     const messageId = Date.now();

@@ -1,0 +1,134 @@
+{% extends 'admin/base_site.html' %}
+{% block title %}Modelos de Ollama | EduAI Admin{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Inicio</a> &rsaquo; Modelos de Ollama</div>{% endblock %}
+{% block content %}
+<style>
+.ollama-wrap {max-width: 980px;}
+.ollama-form {display:flex; flex-wrap:wrap; align-items:end; gap:12px; padding:15px 0;}
+.ollama-form input[type=text] {min-width:260px; padding:9px;}
+.ollama-wrap table {width:100%; border-collapse:collapse;}
+.ollama-wrap th,.ollama-wrap td {padding:10px; border-bottom:1px solid var(--hairline-color,#ddd); text-align:left;}
+.ollama-wrap button {cursor:pointer; padding:8px 12px;}
+.ollama-wrap button:disabled {cursor:not-allowed; opacity:0.6;}
+.ollama-wrap .danger {background:#a31d1d; border:0; color:white; border-radius:4px;}
+.ollama-wrap .feedback {padding:12px; background:var(--darkened-bg,#f1f1f1); margin:12px 0; white-space:pre-wrap;}
+.ollama-wrap progress {width:100%; height:17px;}
+</style>
+<div class="ollama-wrap">
+  <h1>Administración de modelos de Ollama</h1>
+  <p>Los modelos se instalan en el volumen persistente de Ollama. El selector del chat se actualiza automáticamente para los usuarios conectados.</p>
+  {% if error %}<p class="errornote">{{ error }}</p>{% endif %}
+  <div class="module" style="padding:15px;">
+    <h2>Descargar modelo (pull)</h2>
+    <p>Indica el nombre exacto del catálogo de Ollama, por ejemplo <code>qwen3:4b</code> o <code>llama3.2:latest</code>. Verifica el espacio disponible antes de descargar.</p>
+    <form id="pull-form" class="ollama-form" action="{% url 'ollama_pull' %}" method="post">
+      {% csrf_token %}
+      <div><label for="model-name">Modelo</label><br><input type="text" id="model-name" name="model" required maxlength="180" placeholder="qwen3:4b" autocomplete="off"></div>
+      <button type="submit" id="pull-button" class="default">Descargar modelo</button>
+    </form>
+    <progress id="pull-progress" value="0" max="100" hidden></progress>
+    <div class="feedback" id="pull-status" role="status" aria-live="polite" hidden></div>
+  </div>
+
+  <h2>Modelos instalados ({{ models|length }})</h2>
+  <table>
+    <thead><tr><th>Modelo</th><th>Parámetros</th><th>Cuantización</th><th>Tamaño</th><th>Acciones</th></tr></thead>
+    <tbody>
+    {% for model in models %}
+      <tr>
+        <td><code>{{ model.name }}</code></td>
+        <td>{{ model.parameters }}</td>
+        <td>{{ model.quantization }}</td>
+        <td>{{ model.size|filesizeformat }}</td>
+        <td>
+        {% if model.name == protected_model %}
+          <span title="Usado por el generador de preguntas">Protegido (exámenes)</span>
+        {% else %}
+          <form class="delete-form" action="{% url 'ollama_delete' %}" method="post">
+            {% csrf_token %}<input type="hidden" name="model" value="{{ model.name }}">
+            <input type="hidden" name="confirm" value="ELIMINAR">
+            <button type="submit" class="danger">Eliminar</button>
+          </form>
+        {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5">No hay modelos disponibles o no se pudo contactar a Ollama.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p style="margin-top:15px;"><a href="{% url 'ollama_admin' %}">Actualizar listado</a></p>
+  <p><strong>Nota:</strong> si eliminas un modelo mientras alguien lo usa, esa consulta puede fallar. El modelo <code>{{ protected_model }}</code> se protege porque está configurado para la generación de preguntas.</p>
+</div>
+<script>
+(function() {
+  const form = document.getElementById('pull-form');
+  const button = document.getElementById('pull-button');
+  const status = document.getElementById('pull-status');
+  const progress = document.getElementById('pull-progress');
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    button.disabled = true;
+    status.hidden = false;
+    status.textContent = 'Iniciando descarga...';
+    progress.hidden = true;
+    let success = false;
+    try {
+      const response = await fetch(form.action, {method:'POST', body:new FormData(form), credentials:'same-origin'});
+      if (!response.ok) {
+        const obj = await response.json();
+        throw new Error(obj.error || 'No se pudo iniciar la descarga.');
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let pending = '';
+      while (true) {
+        const {value, done} = await reader.read();
+        if (done) break;
+        pending += decoder.decode(value, {stream:true});
+        const lines = pending.split('\n');
+        pending = lines.pop();
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const item = JSON.parse(line);
+          if (item.error) throw new Error(item.error);
+          status.textContent = item.status || 'Descargando...';
+          if (item.total > 0) {
+            const percent = Math.min(100, Math.round(100 * (item.completed || 0) / item.total));
+            progress.hidden = false;
+            progress.value = percent;
+            status.textContent += ` — ${percent}%`;
+          }
+          if (item.status === 'success') success = true;
+        }
+      }
+      if (!success) throw new Error('La conexión terminó sin confirmar una descarga completa.');
+      status.textContent = 'Modelo descargado. Actualizando el listado...';
+      window.location.reload();
+    } catch (err) {
+      status.textContent = 'Error: ' + err.message;
+    } finally {
+      button.disabled = false;
+    }
+  });
+  document.querySelectorAll('.delete-form').forEach(f => {
+    f.addEventListener('submit', async e => {
+      e.preventDefault();
+      const name = f.querySelector('[name=model]').value;
+      if (!window.confirm(`¿Eliminar ${name} de Ollama? Esto afecta a todos los usuarios.`)) return;
+      const button = f.querySelector('button');
+      button.disabled = true;
+      try {
+        const response = await fetch(f.action, {method:'POST', body:new FormData(f), credentials:'same-origin'});
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'No se pudo eliminar.');
+        window.location.reload();
+      } catch(err) {
+        window.alert('Error: ' + err.message);
+        button.disabled = false;
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}

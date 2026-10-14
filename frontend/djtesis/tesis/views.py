@@ -20,11 +20,7 @@ from django.conf import settings
 from django.db.models import Count, Avg, Sum
 from django.views.decorators.cache import never_cache
 
-#Debe ser igual al array que se encuentra en el backend (llmchat.py)
-OLLAMA_MODELS = {
-    0:'Gemma3 4B',
-   #1:'Llama 3.2'
-}
+from .ollama_api import list_models
 
 def index(request):
     register_form = CrearUserForm()
@@ -190,11 +186,25 @@ def dashboard(request):
     }
     return render(request, "tesis/dashboard.html", context)
     
+@never_cache
+@login_required(login_url='index')
+def available_ollama_models(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido.'}, status=405)
+    try:
+        return JsonResponse({'models': [item['name'] for item in list_models()]})
+    except (requests.RequestException, ValueError, KeyError, TypeError):
+        return JsonResponse({'error': 'No se pudo consultar Ollama.'}, status=503)
+
 @login_required(login_url='index')
 def chat(request):
     user = request.user.username
     messages = Mensaje.objects.filter(sender_id=request.user).order_by('timestamp')[:50]  # Load last 50 messages
-    context = {'page':'chat', 'models': OLLAMA_MODELS, 'messages': messages, 'username': user}
+    try:
+        models = list_models()
+    except (requests.RequestException, ValueError, KeyError, TypeError):
+        models = []
+    context = {'page':'chat', 'models': models, 'messages': messages, 'username': user}
     return render(request, "tesis/chat.html", context)
 
 @login_required(login_url='index')

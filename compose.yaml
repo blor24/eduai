@@ -16,6 +16,7 @@ services:
       DJANGO_BASE_URL: http://frontend:8000
       OLLAMA_HOST: http://ollama:11434
       HF_HOME: /app/.cache/huggingface
+      ANONYMIZED_TELEMETRY: "FALSE"
     ports:
       - "8080:8080"
     volumes:
@@ -38,6 +39,7 @@ services:
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,frontend}
       DJANGO_DB_PATH: /app/data/db.sqlite3
       FLASK_BASE_URL: http://backend:8080
+      OLLAMA_BASE_URL: http://ollama:11434
       EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
       EMAIL_HOST: ${EMAIL_HOST:-}
       EMAIL_PORT: ${EMAIL_PORT:-587}

@@ -17,12 +17,16 @@ Including another URLconf
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import path
+from tesis import ollama_admin
 from tesis import views 
 from django.conf import settings
 from django.conf.urls.static import static
 
 
 urlpatterns = [
+    path('admin/ollama/', admin.site.admin_view(ollama_admin.panel), name='ollama_admin'),
+    path('admin/ollama/pull/', admin.site.admin_view(ollama_admin.pull_model), name='ollama_pull'),
+    path('admin/ollama/delete/', admin.site.admin_view(ollama_admin.delete_model), name='ollama_delete'),
     path('admin/', admin.site.urls),
     path('recuperar-contrasena/', auth_views.PasswordResetView.as_view(
         template_name='registration/password_reset_form.html',
@@ -41,6 +45,7 @@ urlpatterns = [
     path('', views.index, name='index'),
     path('logout', views.logout_user, name='logout'),
     path('dashboard', views.dashboard, name='dashboard'),
+    path('dashboard/chat/models/', views.available_ollama_models, name='chat_models'),
     path('dashboard/chat', views.chat, name='chat'),
     path('dashboard/chat/save_mensaje/', views.save_mensaje, name='mensaje'),
     path('dashboard/examen', views.examen, name='examen'),

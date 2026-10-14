@@ -31,3 +31,5 @@ class MensajeAdmin(admin.ModelAdmin):
     search_fields = ('sender__username', 'receiver', 'sender_content', 'receiver_response')
     readonly_fields = ('timestamp',)
     list_select_related = ('sender',)
+
+admin.site.index_template = "tesis/admin_index_eduai.html"

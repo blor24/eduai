@@ -7,7 +7,7 @@ import os
 from flask_socketio import SocketIO, emit
 import requests
 import io, zipfile
-from llmchat import PDFStorage, RAGApplication, ChooseModel, ollama_models
+from llmchat import PDFStorage, RAGApplication, ChooseModel
 from vectorstorage import VectorStorageManager
 from llmgeneration import QuestionGenerator, create_questions_pdf, create_questions_docx
 
@@ -129,6 +129,13 @@ def delete_file():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+def installed_ollama_models():
+    base_url = os.getenv('OLLAMA_HOST', 'http://localhost:11434').rstrip('/')
+    response = requests.get(f'{base_url}/api/tags', timeout=(5, 12))
+    response.raise_for_status()
+    return {item['name'] for item in response.json().get('models', [])}
+
+
 @socketio.on("message")
 def handle_message(msg):
     #empieza conteo para tiempo de respuesta
@@ -138,16 +145,37 @@ def handle_message(msg):
     # Extrae el username y mensaje
     username = msg.get('username')
     sender_content = msg.get('sender_content')
-    receiver = ollama_models[int(msg.get('receiver'))]
+    receiver = str(msg.get('receiver') or '').strip()
+    try:
+        if receiver not in installed_ollama_models():
+            emit('model_error', {
+                'messageId': msg.get('messageId'),
+                'error': 'Este modelo ya no está instalado. Selecciona otro modelo.'
+            })
+            return
+    except (requests.RequestException, ValueError, KeyError):
+        emit('model_error', {
+            'messageId': msg.get('messageId'),
+            'error': 'No se pudo comprobar la disponibilidad de Ollama.'
+        })
+        return
 
     store = PDFStorage(username)
     retriever = store.retrieve()
 
-    model = ChooseModel(int(msg.get('receiver')))
+    model = ChooseModel(receiver)
     rag_chain = model.choose()
     rag_app = RAGApplication(retriever, rag_chain)
     
-    receiver_response = rag_app.run(sender_content)
+    try:
+        receiver_response = rag_app.run(sender_content)
+    except Exception:
+        app.logger.exception('Error al ejecutar el modelo %s', receiver)
+        emit('model_error', {
+            'messageId': msg.get('messageId'),
+            'error': 'La consulta falló. Comprueba el modelo y vuelve a intentarlo.'
+        })
+        return
     
     # Respuesta para django
     data = {
