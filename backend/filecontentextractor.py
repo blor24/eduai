@@ -121,6 +121,34 @@ class FileContentExtractor:
                     text.append(shape.text)
         return len("\n".join(text).strip()) < min_text_threshold
 
+    def get_sections(self, file_path, *, source):
+        """Devuelve documentos con metadatos; PDF se indexa por página.
+
+        Para archivos ya indexados antes de esta versión no existen números de página;
+        estos metadatos aparecen tras una carga nueva o una reindexación completa.
+        """
+        from langchain_core.documents import Document
+        ext = os.path.splitext(file_path)[1].lower()
+        if ext != '.pdf':
+            text = self.get_text(file_path)
+            return [Document(page_content=text, metadata={'source': source})] if text.strip() else []
+
+        sections = []
+        with fitz.open(file_path) as pdf:
+            for page_number, page in enumerate(pdf, 1):
+                text = page.get_text('text').strip()
+                if len(text) < 25:
+                    # OCR por página sólo si el PDF es escaneado o casi no tiene texto.
+                    pixmap = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
+                    picture = Image.open(io.BytesIO(pixmap.tobytes('png')))
+                    ocr = pytesseract.image_to_string(picture, lang=self.ocr_lang).strip()
+                    if len(ocr) > len(text):
+                        text = ocr
+                if text:
+                    sections.append(Document(page_content=text,
+                                             metadata={'source': source, 'page': page_number}))
+        return sections
+
     def get_text(self, file_path):
         ext = os.path.splitext(file_path)[1].lower()
 
@@ -148,3 +176,5 @@ class FileContentExtractor:
                 return "\n".join(page.extract_text() or "" for page in pdf.pages)
         except:
             return self.render_pdf_pages_to_images(file_path)
+
+# EDUAI_FUENTES_V1

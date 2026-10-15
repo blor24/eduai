@@ -51,7 +51,9 @@ def chat_documents(request):
     authorized = [_filename(obj.nombre) for obj in files if obj.pk in chosen]
     token = make_token(request.user.username, authorized)
     return JsonResponse({
-        'files': [{'id': obj.pk, 'name': obj.nombre, 'type': obj.tipo} for obj in files],
+        'files': [{'id': obj.pk, 'name': obj.nombre, 'type': obj.tipo,
+                   'stored_name': _filename(obj.nombre),
+                   'preview_url': f'/dashboard/archivos/{obj.pk}/ver/'} for obj in files],
         'selected': [obj.pk for obj in files if obj.pk in chosen],
         'token': token,
         'selected_count': len(chosen),
@@ -112,3 +114,5 @@ def document_preview(request, file_id):
     response['X-Content-Type-Options'] = 'nosniff'
     response['Cache-Control'] = 'private, no-store'
     return response
+
+# EDUAI_FUENTES_V1

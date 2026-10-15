@@ -199,11 +199,25 @@ def available_ollama_models(request):
 @login_required(login_url='index')
 def chat(request):
     user = request.user.username
-    messages = Mensaje.objects.filter(sender_id=request.user).order_by('timestamp')[:50]  # Load last 50 messages
+    messages = list(Mensaje.objects.filter(sender_id=request.user).order_by('timestamp')[:50])  # Load last 50 messages
     try:
         models = list_models()
     except (requests.RequestException, ValueError, KeyError, TypeError):
         models = []
+    # Los enlaces se resuelven por titularidad, nunca desde una URL enviada por la IA.
+    from django.urls import reverse
+    from .document_views import _filename
+    own_files = { _filename(file.nombre): file for file in Archivo.objects.filter(user=request.user) }
+    for message in messages:
+        message.fuentes_vista = []
+        for source in (message.fuentes or []):
+            if not isinstance(source, dict):
+                continue
+            item = source.copy()
+            own = own_files.get(item.get('filename'))
+            if own is not None:
+                item['preview_url'] = reverse('archivo_vista', args=[own.pk])
+            message.fuentes_vista.append(item)
     context = {'page':'chat', 'models': models, 'messages': messages, 'username': user}
     return render(request, "tesis/chat.html", context)
 
@@ -500,12 +514,34 @@ def save_mensaje(request):
         except User.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': f'Sender not found: {sender_username}'}, status=404)
 
-        # Crea y guarba objeto mensaje
+        # Persistir únicamente referencias a documentos del propietario, con campos acotados.
+        from .document_views import _filename
+        authorized_names = {_filename(a.nombre) for a in Archivo.objects.filter(user=sender_user)}
+        raw_sources = data.get('sources', [])
+        if not isinstance(raw_sources, list) or len(raw_sources) > 5:
+            return JsonResponse({'error': 'Fuentes inválidas'}, status=400)
+        safe_sources = []
+        for entry in raw_sources:
+            if not isinstance(entry, dict):
+                return JsonResponse({'error': 'Fuente inválida'}, status=400)
+            filename = entry.get('filename')
+            idx = entry.get('id')
+            if (not isinstance(filename, str) or filename not in authorized_names
+                    or type(idx) is not int or idx < 1 or idx > 5):
+                return JsonResponse({'error': 'Fuente fuera de ámbito'}, status=400)
+            safe = {'id': idx, 'filename': filename,
+                    'cited': entry.get('cited') is True,
+                    'excerpt': str(entry.get('excerpt', ''))[:320]}
+            for dimension in ('page', 'slide'):
+                number = entry.get(dimension)
+                safe[dimension] = number if type(number) is int and 1 <= number <= 100000 else None
+            safe_sources.append(safe)
         mensaje = Mensaje.objects.create(
             sender=sender_user,
             sender_content=sender_message,
-            receiver = receiver_name,
-            receiver_response=receiver_reply
+            receiver=receiver_name,
+            receiver_response=receiver_reply,
+            fuentes=safe_sources,
         )
 
         return JsonResponse({'status': 'success', 'message_id': mensaje.id})
@@ -534,3 +570,5 @@ def track_session(request):
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
     return JsonResponse({"status": "invalid request"}, status=405)
+
+# EDUAI_FUENTES_V1

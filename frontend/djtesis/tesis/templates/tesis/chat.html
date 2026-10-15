@@ -37,6 +37,22 @@
         </div>
         <div class="card-body" id="receiver-response">
           {{ msg.receiver_response }}
+          {% if msg.fuentes_vista %}
+          <div class="eduai-chat-sources border-top mt-3 pt-2" aria-label="Fragmentos recuperados">
+            <strong class="small">Fuentes y fragmentos consultados</strong>
+            <ol class="small ps-3 mt-2">
+              {% for src in msg.fuentes_vista %}
+              <li class="mb-2">
+                {% if src.preview_url %}<a href="{{ src.preview_url }}{% if src.page and src.filename|lower|slice:'-4:' == '.pdf' %}#page={{ src.page }}{% endif %}" target="_blank" rel="noopener noreferrer">{{ src.filename }}</a>
+                {% else %}<span>{{ src.filename }} (ya no disponible)</span>{% endif %}
+                {% if src.page %} · pág. {{ src.page }}{% elif src.slide %} · diapositiva {{ src.slide }}{% endif %}
+                {% if src.cited %}<span class="badge bg-secondary">Citada [{{ src.id }}]</span>{% else %}<span class="text-muted">Fragmento [{{ src.id }}]</span>{% endif %}
+                <div class="text-muted" style="white-space:pre-wrap">{{ src.excerpt }}</div>
+              </li>
+              {% endfor %}
+            </ol>
+          </div>
+          {% endif %}
         </div>      
       </div>
 
@@ -150,6 +166,50 @@
     return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',
       '"':'&quot;', "'":'&#39;'}[c]));
   }
+  function renderChatSources(replyElement, sources) {
+    if (!replyElement || !Array.isArray(sources) || sources.length === 0) return;
+    const box = document.createElement('div');
+    box.className = 'eduai-chat-sources border-top mt-3 pt-2';
+    const title = document.createElement('strong');
+    title.className = 'small';
+    title.textContent = 'Fuentes y fragmentos consultados';
+    box.appendChild(title);
+    const list = document.createElement('ol');
+    list.className = 'small ps-3 mt-2';
+    for (const source of sources.slice(0, 5)) {
+      const item = document.createElement('li');
+      item.className = 'mb-2';
+      const owned = userDocuments.find(f => f.stored_name === source.filename);
+      let heading;
+      if (owned && owned.preview_url) {
+        heading = document.createElement('a');
+        heading.href = owned.preview_url + (
+          Number.isInteger(source.page) && source.page > 0 && source.filename.toLowerCase().endsWith('.pdf')
+            ? '#page=' + source.page : '');
+        heading.target = '_blank';
+        heading.rel = 'noopener noreferrer';
+      } else {
+        heading = document.createElement('span');
+      }
+      heading.textContent = source.filename || 'Documento';
+      item.appendChild(heading);
+      const meta = document.createElement('span');
+      meta.className = 'text-muted';
+      meta.textContent = (source.page ? ` · pág. ${source.page}` :
+                          source.slide ? ` · diapositiva ${source.slide}` : '') +
+                         (source.cited ? ` · Citada [${source.id}]` : ` · Fragmento [${source.id}]`);
+      item.appendChild(meta);
+      const excerpt = document.createElement('div');
+      excerpt.className = 'text-muted';
+      excerpt.style.whiteSpace = 'pre-wrap';
+      excerpt.textContent = source.excerpt || '';
+      item.appendChild(excerpt);
+      list.appendChild(item);
+    }
+    box.appendChild(list);
+    replyElement.appendChild(box);
+  }
+
   async function refreshAvailableModels() {
     try {
       const response = await fetch("{% url 'chat_models' %}", {credentials:'same-origin', cache:'no-store'});
@@ -200,6 +260,7 @@
       if (responseElement) {
         // Actualiza el mensaje del LLM
         responseElement.textContent = data.receiver_response;
+        renderChatSources(responseElement, data.sources || []);
         
         // Scroll para que sea visible
         var chatBox = document.getElementById("messages");
@@ -238,6 +299,8 @@
                       +"<br>"
                       +"</div>";
 
+    const lastReply = chatBox.lastElementChild?.querySelectorAll('.card-body')[1];
+    renderChatSources(lastReply, data.sources || []);
     // Va al final
     chatBox.scrollTop = chatBox.scrollHeight;
   });
@@ -387,3 +450,5 @@
   
 </script>
 {% endblock %}
+
+<!-- EDUAI_FUENTES_V1 -->

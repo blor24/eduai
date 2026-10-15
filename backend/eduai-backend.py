@@ -195,7 +195,9 @@ def handle_message(msg):
     rag_app = RAGApplication(retriever, rag_chain)
     
     try:
-        receiver_response = rag_app.run(sender_content)
+        rag_result = rag_app.run_with_sources(sender_content, username=username, filenames=selected_files)
+        receiver_response = rag_result['answer']
+        sources = rag_result['sources']
     except Exception:
         app.logger.exception('Error al ejecutar el modelo %s', receiver)
         emit('model_error', {
@@ -209,7 +211,8 @@ def handle_message(msg):
         'username': username,
         'sender_content': sender_content,
         'receiver': receiver,
-        'receiver_response': receiver_response
+        'receiver_response': receiver_response,
+        'sources': sources
     }
     
     try:
@@ -228,6 +231,7 @@ def handle_message(msg):
         'sender_content': sender_content,
         'receiver': receiver,
         'receiver_response': receiver_response,
+        'sources': sources,
         'messageId': msg.get('messageId')  # messageId para remover spinner
     }
     
@@ -310,3 +314,4 @@ if __name__ == "__main__":
                  port=int(os.getenv("FLASK_PORT", "8080")),
                  debug=os.getenv("FLASK_DEBUG", "0") == "1")
     
+# EDUAI_FUENTES_V1

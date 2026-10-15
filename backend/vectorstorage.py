@@ -50,11 +50,9 @@ class VectorStorageManager:
     def insert_collection(self, file_path, username, already_locked=False):
         with (nullcontext() if already_locked else self.lock()):
             cfg = config(force=True)
-            text = self.extractor.get_text(file_path)
-            if not text or not text.strip():
-                raise ValueError('El archivo no contiene texto indexable.')
             src = f'uploads/{username}/{Path(file_path).name}'
-            docs = self.splitter.split_documents([Document(page_content=text, metadata={'source': src})])
+            sections = self.extractor.get_sections(file_path, source=src)
+            docs = self.splitter.split_documents(sections)
             if not docs:
                 raise ValueError('No se generaron fragmentos del archivo.')
             self.store(username, cfg).add_documents(docs)
@@ -126,11 +124,9 @@ class VectorStorageManager:
                     for file in sorted(user_dir.iterdir()):
                         if not file.is_file() or file.suffix.lower() not in ('.docx', '.fodt', '.md', '.odt', '.pdf', '.pptx', '.txt'):
                             continue
-                        text = self.extractor.get_text(str(file))
-                        if not text or not text.strip():
-                            raise ValueError(f'Archivo sin texto: {username}/{file.name}')
                         src = f'uploads/{username}/{file.name}'
-                        docs = self.splitter.split_documents([Document(page_content=text, metadata={'source': src})])
+                        sections = self.extractor.get_sections(str(file), source=src)
+                        docs = self.splitter.split_documents(sections)
                         if not docs:
                             raise ValueError('No se pudo fragmentar: ' + src)
                         vs.add_documents(docs)
@@ -157,3 +153,5 @@ class VectorStorageManager:
                     except Exception:
                         logger.exception('No se pudo limpiar versión temporal para %s', username)
                 raise
+
+# EDUAI_FUENTES_V1

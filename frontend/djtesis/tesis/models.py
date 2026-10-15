@@ -25,6 +25,7 @@ class Mensaje(models.Model):
     receiver = models.TextField(null=True)
     sender_content = models.TextField()
     receiver_response = models.TextField()
+    fuentes = models.JSONField(default=list, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -33,3 +34,5 @@ class Mensaje(models.Model):
 
 # Entidades para la administración de modelos y reindexaciones
 from .ai_models import AIConfiguration, AIJob, AITestCase
+
+# EDUAI_FUENTES_V1
