@@ -44,7 +44,6 @@ def log_request_time(response):
             f.write(log_line)
     return response
 ###
-vsm = VectorStorageManager()
 
 UPLOAD_FOLDER = "uploads"
 BASE_DB_FOLDER = "chroma_dbs"
@@ -92,8 +91,16 @@ def upload():
         if os.path.exists(file_path):
             return jsonify({'status': 'error', 'message': 'El archivo ya existe.'}), 409 
 
-        file.save(file_path)
-        vsm.insert_collection(file_path, username)
+        manager = VectorStorageManager()
+        with manager.lock():
+            if os.path.exists(file_path):
+                return jsonify({'status': 'error', 'message': 'El archivo ya existe.'}), 409
+            file.save(file_path)
+            try:
+                manager.insert_collection(file_path, username, already_locked=True)
+            except Exception:
+                os.remove(file_path)
+                raise
 
         return jsonify({'status': 'success', 'file_path': file_path}), 200
     except Exception as e:
@@ -121,8 +128,10 @@ def delete_file():
             return jsonify({'status': 'error', 'message': 'File does not exist'}), 404
 
         # Elimina el archivo
-        os.remove(file_path)
-        vsm.delete_collection(username, filename)
+        manager = VectorStorageManager()
+        with manager.lock():
+            manager.delete_collection(username, filename, already_locked=True)
+            os.remove(file_path)
 
         return jsonify({'status': 'success', 'message': 'Archivo y contenido eliminados correctamente.'}), 200
 

@@ -1,0 +1,3 @@
+[
+  {"username": "USUARIO_REAL", "query": "¿Qué conceptos principales aparecen en este material?", "expected_source": "DOCUMENTO_REAL.pdf"}
+]

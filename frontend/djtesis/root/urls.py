@@ -18,12 +18,20 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import path
 from tesis import ollama_admin
+from tesis import ai_control
 from tesis import views 
 from django.conf import settings
 from django.conf.urls.static import static
 
 
 urlpatterns = [
+    path('admin/ia/', admin.site.admin_view(ai_control.panel), name='ai_panel'),
+    path('admin/ia/generator/', admin.site.admin_view(ai_control.set_generator), name='ai_set_generator'),
+    path('admin/ia/jobs/', admin.site.admin_view(ai_control.queue_job), name='ai_queue_job'),
+    path('internal/ai/config/', ai_control.internal_config, name='ai_internal_config'),
+    path('internal/ai/jobs/claim/', ai_control.claim_job, name='ai_job_claim'),
+    path('internal/ai/tests/', ai_control.internal_testcases, name='ai_internal_tests'),
+    path('internal/ai/jobs/<int:job_id>/report/', ai_control.report_job, name='ai_job_report'),
     path('admin/ollama/', admin.site.admin_view(ollama_admin.panel), name='ollama_admin'),
     path('admin/ollama/pull/', admin.site.admin_view(ollama_admin.pull_model), name='ollama_pull'),
     path('admin/ollama/delete/', admin.site.admin_view(ollama_admin.delete_model), name='ollama_delete'),

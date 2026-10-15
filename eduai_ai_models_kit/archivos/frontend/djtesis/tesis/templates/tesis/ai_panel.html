@@ -1,0 +1,58 @@
+{% extends 'admin/base_site.html' %}
+{% block title %}Modelos IA | EduAI{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Inicio</a> &rsaquo; Inteligencia artificial</div>{% endblock %}
+{% block content %}
+<style>
+.ai-wrap{max-width:1050px}.ai-wrap section{padding:18px;margin-bottom:20px;border:1px solid var(--hairline-color,#ddd);border-radius:6px}
+.ai-wrap form{display:flex;flex-wrap:wrap;align-items:end;gap:12px}.ai-wrap label{display:block;margin-bottom:5px}
+.ai-wrap select,.ai-wrap input{min-width:170px;padding:8px}.ai-wrap button{padding:9px 16px;cursor:pointer}
+.ai-wrap table{width:100%;border-collapse:collapse}.ai-wrap td,.ai-wrap th{padding:10px;border-bottom:1px solid #ccc;text-align:left}
+</style>
+<div class="ai-wrap">
+<h1>Administración de inteligencia artificial</h1>
+<p>Los cambios del LLM se aplican inmediatamente a las siguientes solicitudes. Los cambios de embeddings requieren reindexar los documentos; la versión anterior permanece activa hasta completar el trabajo.</p>
+<section>
+<h2>1. Generador de preguntas y exámenes</h2>
+<form method="post" action="{% url 'ai_set_generator' %}">{% csrf_token %}
+<div><label for="gen">Modelo Ollama instalado</label><select id="gen" name="generation_model" required>
+{% for model in ollama_models %}<option value="{{ model }}" {% if model == config.generation_model %}selected{% endif %}>{{ model }}</option>{% endfor %}
+</select></div>
+<div><label for="ctx">Contexto (tokens)</label><input id="ctx" type="number" min="512" max="32768" name="num_ctx" value="{{ config.num_ctx }}" required></div>
+<div><label for="predict">Salida máxima (tokens)</label><input id="predict" type="number" min="64" max="4096" name="num_predict" value="{{ config.num_predict }}" required></div>
+<button type="submit" class="default">Guardar configuración</button></form>
+</section>
+<section>
+<h2>2. Embeddings y búsqueda documental</h2>
+<p><strong>Activo:</strong> {{ config.embedding_provider }} / <code>{{ config.embedding_model }}</code><br>
+<strong>Índice:</strong> <code>{{ config.index_version }}</code></p>
+<form method="post" action="{% url 'ai_queue_job' %}">{% csrf_token %}
+<div><label for="kind">Acción</label><select name="kind" id="kind">
+<option value="download">Descargar Hugging Face</option><option value="reindex">Reindexar y activar modelo</option><option value="delete">Eliminar caché HF (si no está en uso)</option></select></div>
+<div><label for="provider">Proveedor</label><select id="provider" name="provider"><option value="hf">Hugging Face</option><option value="ollama">Ollama</option></select></div>
+<div><label for="name">Modelo</label><select name="model_name" id="name" required>
+{% for model in hf_models %}<option data-provider="hf" value="{{ model }}">{{ model }}</option>{% endfor %}
+{% for model in ollama_embeds %}<option data-provider="ollama" value="{{ model }}">{{ model }}</option>{% endfor %}
+</select></div>
+<button type="submit" class="default" {% if busy %}disabled{% endif %}>Crear trabajo</button></form>
+<p>Para <strong>Ollama</strong>, primero instala el embedding desde <a href="{% url 'ollama_admin' %}">Modelos Ollama</a> y luego selecciona «Reindexar». Las descargas HF se ejecutan en el worker, no en la solicitud web.</p>
+</section>
+<section>
+<h2>3. Evaluación reproducible</h2>
+<p>Registra preguntas con documento fuente esperado en <a href="{% url 'admin:tesis_aitestcase_changelist' %}">Casos de prueba</a>. Calcularemos Hit@5, MRR@5 y latencia para el índice activo.</p>
+<form method="post" action="{% url 'ai_queue_job' %}">{% csrf_token %}
+<input type="hidden" name="kind" value="benchmark"><button type="submit">Evaluar índice activo</button></form>
+</section><section>
+<h2>4. Trabajos recientes</h2>
+<table><thead><tr><th>Tipo</th><th>Modelo</th><th>Estado</th><th>Progreso / error</th></tr></thead><tbody>
+{% for job in jobs %}<tr><td>{{ job.get_kind_display }}</td><td><code>{{ job.model_name }}</code></td><td>{{ job.get_status_display }}</td><td>{{ job.progress }} {% if job.error %}<strong>{{ job.error }}</strong>{% endif %}</td></tr>
+{% empty %}<tr><td colspan="4">Todavía no hay trabajos.</td></tr>{% endfor %}</tbody></table>
+<p><a href="{% url 'ai_panel' %}">Actualizar estado</a></p>
+</section>
+</div>
+<script>
+(()=>{const provider=document.getElementById('provider'),model=document.getElementById('name'),kind=document.getElementById('kind');
+function sync(){if(kind.value==='download'||kind.value==='delete')provider.value='hf';provider.querySelectorAll('option').forEach(o=>o.disabled=(kind.value!=='reindex'&&o.value!=='hf'));
+const options=Array.from(model.options);let first=null;options.forEach(o=>{o.hidden=o.dataset.provider!==provider.value;o.disabled=o.hidden;if(!o.hidden&&!first)first=o;});if(model.selectedOptions[0]?.disabled&&first)model.value=first.value;}
+provider.addEventListener('change',sync);kind.addEventListener('change',sync);sync();})();
+</script>
+{% endblock %}

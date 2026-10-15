@@ -10,6 +10,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
 from .ollama_api import OLLAMA_BASE_URL, list_models, valid_model_name
+from .ai_models import AIConfiguration
 
 logger = logging.getLogger(__name__)
 # Este modelo se usa por defecto para generar preguntas en llmgeneration.py.
@@ -39,7 +40,8 @@ def panel(request):
         'title': 'Modelos de Ollama',
         'models': models,
         'error': error,
-        'protected_model': PROTECTED_QUESTION_MODEL,
+        'protected_model': AIConfiguration.current().generation_model,
+        'protected_models': {AIConfiguration.current().generation_model} | ({AIConfiguration.current().embedding_model} if AIConfiguration.current().embedding_provider == 'ollama' else set()),
     })
 
 
@@ -91,7 +93,7 @@ def delete_model(request):
         return error_response('Nombre de modelo inválido.')
     if request.POST.get('confirm') != 'ELIMINAR':
         return error_response('Debes confirmar la eliminación del modelo.')
-    if name == PROTECTED_QUESTION_MODEL:
+    if name == AIConfiguration.current().generation_model or (AIConfiguration.current().embedding_provider == 'ollama' and name == AIConfiguration.current().embedding_model):
         return error_response('Este modelo está reservado para generar preguntas. Cambia primero el modelo de llmgeneration.py.')
     try:
         # Importante: sólo se permite borrar nombres que realmente existen.

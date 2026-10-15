@@ -33,3 +33,36 @@ class MensajeAdmin(admin.ModelAdmin):
     list_select_related = ('sender',)
 
 admin.site.index_template = "tesis/admin_index_eduai.html"
+
+
+from .ai_models import AIConfiguration, AIJob, AITestCase
+
+@admin.register(AIConfiguration)
+class AIConfigurationAdmin(admin.ModelAdmin):
+    list_display = ('generation_model', 'embedding_provider', 'embedding_model', 'index_version', 'updated_at')
+    readonly_fields = ('generation_model', 'embedding_provider', 'embedding_model', 'index_version', 'num_ctx', 'num_predict', 'updated_at')
+    def has_add_permission(self, request):
+        return False
+    def has_delete_permission(self, request, obj=None):
+        return False
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+@admin.register(AIJob)
+class AIJobAdmin(admin.ModelAdmin):
+    list_display = ('id', 'kind', 'model_name', 'status', 'progress', 'created_at')
+    list_filter = ('kind', 'status', 'created_at')
+    readonly_fields = ('kind', 'provider', 'model_name', 'status', 'progress', 'error', 'target_version', 'submitted_by', 'created_at', 'started_at', 'finished_at')
+    def has_add_permission(self, request):
+        return False
+    def has_delete_permission(self, request, obj=None):
+        return False
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+
+@admin.register(AITestCase)
+class AITestCaseAdmin(admin.ModelAdmin):
+    list_display = ('username', 'query', 'expected_filename', 'enabled')
+    list_filter = ('enabled',)
+    search_fields = ('username', 'query', 'expected_filename')

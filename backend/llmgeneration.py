@@ -1,25 +1,30 @@
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_ollama import OllamaLLM
-from langchain_huggingface import HuggingFaceEmbeddings
 from vectorstorage import VectorStorageManager
 from langchain_core.output_parsers import JsonOutputParser
+from ai_runtime import config
+import os, json, math
 from fpdf import FPDF
 
 from docx import Document
 from docx.shared import Pt
 
 class QuestionGenerator:
-    def __init__(self, ollama_model="gemma3:4b", embed_model="sentence-transformers/all-MiniLM-L12-v2"):
+    def __init__(self, ollama_model=None, embed_model=None):
+        # Modelo activo desde Django. No carga un embedding adicional.
+        self.settings = config()
         self.vsm = VectorStorageManager()
-        self.embeddings = HuggingFaceEmbeddings(model_name=embed_model)
-        self.llm = OllamaLLM(model=ollama_model)
-
+        self.llm = OllamaLLM(
+            model=ollama_model or self.settings['generation_model'],
+            base_url=os.getenv('OLLAMA_HOST', 'http://ollama:11434'),
+            temperature=0.1, num_ctx=int(self.settings['num_ctx']),
+            num_predict=int(self.settings['num_predict']), format='json')
         self.prompts = {
-            "multiple": self._build_multiple_choice_prompt(),
-            "corta": self._build_short_answer_prompt(),
-            "espacio": self._build_fill_blank_prompt(),
-            "emparejar": self._build_match_prompt()
+            'multiple': self._build_multiple_choice_prompt(),
+            'corta': self._build_short_answer_prompt(),
+            'espacio': self._build_fill_blank_prompt(),
+            'emparejar': self._build_match_prompt()
         }
 
     def _build_multiple_choice_prompt(self):
@@ -187,38 +192,76 @@ class QuestionGenerator:
             input_variables=["number", "documents"]
         )
 
-    def get_documents(self, namespace: str, filename: str) -> str:
+    def get_documents(self, namespace, filename):
         docs = self.vsm.get_docs(namespace, filename)
-        return "\n".join([' '.join(d.split()) for d in docs])
+        if not docs:
+            raise ValueError('El documento no está indexado en la versión activa.')
+        return [" ".join(d.split()) for d in docs if d and d.strip()]
 
-    def generate_questions(self, question_type: str, number: int, namespace: str, filename: str) -> str:
-        if question_type not in self.prompts:
-            raise ValueError(f"Unsupported question type: {question_type}")
+    @staticmethod
+    def validate_result(kind, raw, requested):
+        if not isinstance(raw, dict) or not isinstance(raw.get('questions'), list):
+            raise ValueError('El LLM no devolvió {"questions": [...]}')
+        items = raw['questions']
+        if len(items) != (1 if kind == 'emparejar' else requested):
+            raise ValueError(f'Cantidad incorrecta de preguntas para {kind}')
+        for item in items:
+            if not isinstance(item, dict):
+                raise ValueError('Pregunta incorrecta: no es un objeto')
+            if kind == 'emparejar':
+                terms, concepts = item.get('terms'), item.get('concepts')
+                if not all(isinstance(x, list) and len(x) == requested for x in (terms, concepts)):
+                    raise ValueError('El número de términos/conceptos es incorrecto')
+                if not all(isinstance(s, str) and s.strip() for s in terms + concepts):
+                    raise ValueError('Hay términos o conceptos vacíos')
+                continue
+            if not all(isinstance(item.get(k), str) and item[k].strip()
+                       for k in ('question', 'correct_answer', 'explanation')):
+                raise ValueError('Faltan campos requeridos de la pregunta')
+            if kind == 'multiple':
+                opts = item.get('options')
+                if not isinstance(opts, list) or len(opts) != 4 or not all(isinstance(x, str) and x.strip() for x in opts):
+                    raise ValueError('La pregunta debe tener cuatro opciones válidas')
+                if item['correct_answer'] not in opts:
+                    raise ValueError('La respuesta correcta no coincide con las opciones')
+            if kind in ('corta', 'espacio') and len(item['correct_answer'].split()) != 1:
+                raise ValueError('La respuesta debe contener una sola palabra')
+            if kind == 'espacio' and '___' not in item['question']:
+                raise ValueError('Falta ___ en la pregunta de completar')
+        return items
 
-        documents = self.get_documents(namespace, filename)
-        prompt = self.prompts[question_type]
-        chain = prompt | self.llm | StrOutputParser()
-
-        return chain.invoke({"number": number, "documents": documents})
-
-    def generate_all_types(self, types: list[str], number: int, namespace: str, filename: str) -> dict:
-        documents = self.get_documents(namespace, filename)
-        results = {}
-        parser = JsonOutputParser()
-
-        for question_type in types:
-            if question_type not in self.prompts:
-                raise ValueError(f"Unsupported question type: {question_type}")
-
-            prompt = self.prompts[question_type]
-            chain = prompt | self.llm | parser
-
+    def _batch(self, kind, amount, passage):
+        chain = self.prompts[kind] | self.llm | JsonOutputParser()
+        last_error = None
+        for attempt in range(2):
             try:
-                output = chain.invoke({"number": number, "documents": documents})
-                results[question_type] = output
-            except Exception as e:
-                results[question_type] = f"Error generating {question_type}: {str(e)}"
+                raw = chain.invoke({'number': amount, 'documents': passage})
+                return self.validate_result(kind, raw, amount)
+            except (ValueError, KeyError, TypeError, json.JSONDecodeError) as error:
+                last_error = error
+        raise ValueError(f'No se pudo validar la generación de {kind}: {last_error}')
 
+    def generate_questions(self, question_type, number, namespace, filename):
+        return json.dumps(self.generate_all_types([question_type], number, namespace, filename)[question_type], ensure_ascii=False)
+
+    def generate_all_types(self, types, number, namespace, filename):
+        number = int(number)
+        if not 1 <= number <= 40:
+            raise ValueError('El número de preguntas debe estar entre 1 y 40')
+        if not types or any(kind not in self.prompts for kind in types):
+            raise ValueError('Tipo de pregunta no permitido')
+        docs = self.get_documents(namespace, filename)
+        results = {}
+        for kind in types:
+            batches = 1 if kind == 'emparejar' else math.ceil(number / 4)
+            all_items = []
+            for i in range(batches):
+                amount = number if kind == 'emparejar' else min(4, number - len(all_items))
+                position = min(len(docs) - 1, int(i * len(docs) / batches))
+                # Distribuye las preguntas sobre distintas secciones; nunca concatena todo el PDF.
+                passage = '\n'.join(docs[position:position+3])[:4200]
+                all_items.extend(self._batch(kind, amount, passage))
+            results[kind] = {'questions': all_items}
         return results
 
 class PDF(FPDF):

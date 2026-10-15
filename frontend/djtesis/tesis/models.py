@@ -29,3 +29,7 @@ class Mensaje(models.Model):
 
     def __str__(self):
         return f"Mensaje de {self.sender.username} a {self.receiver or 'asistente'}"
+
+
+# Entidades para la administración de modelos y reindexaciones
+from .ai_models import AIConfiguration, AIJob, AITestCase

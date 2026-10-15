@@ -41,7 +41,7 @@
         <td>{{ model.quantization }}</td>
         <td>{{ model.size|filesizeformat }}</td>
         <td>
-        {% if model.name == protected_model %}
+        {% if model.name in protected_models %}
           <span title="Usado por el generador de preguntas">Protegido (exámenes)</span>
         {% else %}
           <form class="delete-form" action="{% url 'ollama_delete' %}" method="post">

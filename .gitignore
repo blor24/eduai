@@ -37,3 +37,5 @@ backend/testing/rag.py
 
 # Sistema operativo
 .DS_Store
+
+.eduai_ai_backup/

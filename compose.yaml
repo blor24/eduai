@@ -14,6 +14,7 @@ services:
       FLASK_PORT: "8080"
       FLASK_DEBUG: "0"
       DJANGO_BASE_URL: http://frontend:8000
+      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?Configura AI_INTERNAL_TOKEN en .env}
       OLLAMA_HOST: http://ollama:11434
       HF_HOME: /app/.cache/huggingface
       ANONYMIZED_TELEMETRY: "FALSE"
@@ -39,6 +40,7 @@ services:
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,frontend}
       DJANGO_DB_PATH: /app/data/db.sqlite3
       FLASK_BASE_URL: http://backend:8080
+      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?Configura AI_INTERNAL_TOKEN en .env}
       OLLAMA_BASE_URL: http://ollama:11434
       EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
       EMAIL_HOST: ${EMAIL_HOST:-}
@@ -50,11 +52,43 @@ services:
       DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-no-reply@localhost}
     ports:
       - "8000:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/admin/login/', timeout=5)"
+      interval: 10s
+      timeout: 6s
+      retries: 12
+      start_period: 40s
     volumes:
       - django_data:/app/data
       - django_media:/app/media
     depends_on:
       - backend
+
+
+  ai_worker:
+    build:
+      context: ./backend
+    command: ["python", "ai_worker.py"]
+    restart: unless-stopped
+    environment:
+      DJANGO_BASE_URL: http://frontend:8000
+      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?Configura AI_INTERNAL_TOKEN en .env}
+      OLLAMA_HOST: http://ollama:11434
+      HF_HOME: /app/.cache/huggingface
+      ANONYMIZED_TELEMETRY: "FALSE"
+    volumes:
+      - backend_uploads:/app/uploads
+      - backend_vectors:/app/chroma_dbs
+      - hf_cache:/app/.cache/huggingface
+    depends_on:
+      frontend:
+        condition: service_healthy
+      ollama:
+        condition: service_started
 
 volumes:
   ollama_data:
