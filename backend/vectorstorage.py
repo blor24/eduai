@@ -93,8 +93,15 @@ class VectorStorageManager:
         src = f'uploads/{username}/{filename}'
         return col.get(where={'source': src}, include=['documents'])['documents']
 
-    def retriever(self, username):
-        return self.store(username).as_retriever(search_kwargs={'k': 5})
+    def retriever(self, username, filenames=None):
+        if filenames is None:
+            return self.store(username).as_retriever(search_kwargs={'k': 5})
+        if not filenames:
+            raise ValueError('Selecciona al menos un documento.')
+        sources = [f'uploads/{username}/{name}' for name in dict.fromkeys(filenames)]
+        where = ({'source': sources[0]} if len(sources) == 1 else
+                 {'$or': [{'source': src} for src in sources]})
+        return self.store(username).as_retriever(search_kwargs={'k': 5, 'filter': where})
 
     def reindex_everyone(self, provider, model, target_version, on_progress=lambda msg: None, on_activate=lambda count: None):
         """Construye una versión nueva. Sólo Django activa después de éxito global."""

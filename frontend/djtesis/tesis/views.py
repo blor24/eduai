@@ -217,7 +217,8 @@ def archivos(request):
             file_obj = request.FILES.get('file')
             
             if not username or not file_obj:
-                messages.error(request, JsonResponse({'status': 'error', 'message': 'Falta identficación de usuario o archivo.'}, status=400))
+                messages.error(request, 'Selecciona un archivo para cargar.')
+                return redirect('archivos')
             
             flask_url = f"{FLASK_BASE_URL}/upload" 
             
@@ -232,10 +233,14 @@ def archivos(request):
 
             try:
                 # POST al Flask server.
-                response = requests.post(flask_url, data=data, files=files)
+                response = requests.post(flask_url, data=data, files=files,
+                    headers={'X-EduAI-Internal-Token': os.environ.get('AI_INTERNAL_TOKEN', '')},
+                    timeout=180)
                 response.raise_for_status()  # Genera un HTTPError si la petición HTTP retorna un codigo fallido.
 
-                archivo = Archivo(user=request.user, nombre=file_obj.name, tipo=os.path.splitext(file_obj.name)[1].lower(), fecha_carga=datetime.now())
+                saved_filename = os.path.basename(response.json()['file_path'])
+                archivo = Archivo(user=request.user, nombre=saved_filename,
+                    tipo=os.path.splitext(saved_filename)[1].lower(), fecha_carga=datetime.now())
                 archivo.save()
                 messages.success(request, "Archivo y contenido almacenados correctamente.")
             except requests.exceptions.RequestException as e:
@@ -247,7 +252,11 @@ def archivos(request):
             id_archivo = request.POST.get('id-archivo')
             filename = request.POST.get('nombre-archivo')
             
-            instancia = Archivo.objects.get(user=request.user, id=id_archivo)
+            instancia = Archivo.objects.filter(user=request.user, id=id_archivo).first()
+            if instancia is None:
+                messages.error(request, 'No existe ese archivo en tu biblioteca.')
+                return redirect('archivos')
+            filename = instancia.nombre  # no confiar en el campo oculto del formulario
 
             if not username or not filename:
                 messages.error(request, 'Missing username or filename.')
@@ -260,7 +269,9 @@ def archivos(request):
             }
 
             try:
-                response = requests.post(flask_url, data=data)
+                response = requests.post(flask_url, data=data,
+                    headers={'X-EduAI-Internal-Token': os.environ.get('AI_INTERNAL_TOKEN', '')},
+                    timeout=45)
                 response_data = response.json()
 
                 if response.status_code == 200 and response_data.get('status') == 'success':
@@ -364,7 +375,9 @@ def examen(request):
             }
 
             try:
-                response = requests.post(flask_url, data=data)
+                response = requests.post(flask_url, data=data,
+                headers={'X-EduAI-Internal-Token': os.environ.get('AI_INTERNAL_TOKEN', '')},
+                timeout=300)
                 response.raise_for_status()
 
                 if response.status_code == 200:
@@ -408,7 +421,9 @@ def generar(request):
         }
 
         try:
-            response = requests.post(flask_url, data=data)
+            response = requests.post(flask_url, data=data,
+                headers={'X-EduAI-Internal-Token': os.environ.get('AI_INTERNAL_TOKEN', '')},
+                timeout=300)
             response.raise_for_status()
 
             if response.headers.get("Content-Type") == "application/zip":
@@ -466,6 +481,10 @@ def cuenta(request):
 
 @csrf_exempt
 def save_mensaje(request):
+    import hmac
+    secret = os.environ.get('AI_INTERNAL_TOKEN', '')
+    if not secret or not hmac.compare_digest(secret, request.headers.get('X-EduAI-Internal-Token', '')):
+        return JsonResponse({'error': 'Prohibido'}, status=403)
     if request.method == 'POST':
         data = json.loads(request.body)
         

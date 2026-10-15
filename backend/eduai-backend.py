@@ -12,10 +12,13 @@ from vectorstorage import VectorStorageManager
 from llmgeneration import QuestionGenerator, create_questions_pdf, create_questions_docx
 
 from pathlib import Path
+from document_api import register as register_document_routes
+from document_scope import verify as verify_document_scope, InvalidDocumentScope
 #FLASK_cors para permitir comunicacion en el mismo host
 #from flask_cors import CORS
 ### CONFIGURACIONES
 app = Flask(__name__)
+register_document_routes(app)
 DJANGO_BASE_URL = os.environ.get("DJANGO_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 
 #Permitir peticiones desde el mismo host
@@ -62,6 +65,9 @@ def allowed_file(filename):
 ### ENDPOINTS
 @app.route('/upload', methods=['POST'])
 def upload():
+    from document_api import authorized
+    if not authorized():
+        return jsonify({'error': 'Prohibido'}), 403
     try:
         if 'file' not in request.files:
             return jsonify({'status': 'error', 'message': 'No se proporcionó el archivo.'}), 400
@@ -108,6 +114,9 @@ def upload():
     
 @app.route('/delete', methods=['POST'])
 def delete_file():
+    from document_api import authorized
+    if not authorized():
+        return jsonify({'error': 'Prohibido'}), 403
     try:
         # Obtiene el nombre de usuario y nombre de archivo
         username = request.form.get('username')
@@ -152,8 +161,17 @@ def handle_message(msg):
     print(f"Mensaje recibido: {msg}")
     
     # Extrae el username y mensaje
-    username = msg.get('username')
+    try:
+        username, selected_files = verify_document_scope(msg.get('document_token'))
+        if not selected_files:
+            raise InvalidDocumentScope('Selecciona documentos disponibles antes de preguntar.')
+    except InvalidDocumentScope as exc:
+        emit('model_error', {'messageId': msg.get('messageId'), 'error': str(exc)})
+        return
     sender_content = msg.get('sender_content')
+    if not isinstance(sender_content, str) or not sender_content.strip() or len(sender_content) > 12000:
+        emit('model_error', {'messageId': msg.get('messageId'), 'error': 'Mensaje vacío o demasiado largo.'})
+        return
     receiver = str(msg.get('receiver') or '').strip()
     try:
         if receiver not in installed_ollama_models():
@@ -169,7 +187,7 @@ def handle_message(msg):
         })
         return
 
-    store = PDFStorage(username)
+    store = PDFStorage(username, selected_files)
     retriever = store.retrieve()
 
     model = ChooseModel(receiver)
@@ -196,7 +214,8 @@ def handle_message(msg):
     
     try:
         # Envia mensaje a Django para almacenar el mensaje
-        response = requests.post(f"{DJANGO_BASE_URL}/dashboard/chat/save_mensaje/", json=data)
+        response = requests.post(f"{DJANGO_BASE_URL}/dashboard/chat/save_mensaje/", json=data,
+            headers={'X-EduAI-Internal-Token': os.getenv('AI_INTERNAL_TOKEN', '')}, timeout=15)
          # Debug output
         print(f"Status code: {response.status_code}")
         print(f"Response text: {response.text}")
@@ -222,6 +241,9 @@ def handle_message(msg):
     
 @app.route('/file', methods=['POST'])
 def file():
+    from document_api import authorized
+    if not authorized():
+        return jsonify({'error': 'Prohibido'}), 403
     qgen = QuestionGenerator()
     try:
         username = request.form.get('username')
@@ -261,6 +283,9 @@ def file():
 
 @app.route('/exam', methods=['POST'])
 def exam():
+    from document_api import authorized
+    if not authorized():
+        return jsonify({'error': 'Prohibido'}), 403
     qgen = QuestionGenerator()
     try:
         username = request.form.get('username')

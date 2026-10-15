@@ -37,6 +37,7 @@
       <th scope="col">Nombre</th>
       <th scope="col">Tipo</th>
       <th scope="col">Fecha de carga</th>
+      <th scope="col">Índice activo</th>
       <th scope="col">Acciones</th>
     </tr>
   </thead>
@@ -46,7 +47,9 @@
         <td>{{item.nombre}}</td>
         <td>{{item.tipo}}</td>
         <td>{{item.fecha_carga}}</td>
-        <td><button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#archivoModal" data-id="{{ item.id }}" data-nombre="{{ item.nombre }}"><i class="bi bi-trash3"></i></button>
+        <td><span class="badge bg-secondary" data-index-file="{{ item.id }}">Consultando...</span></td>
+        <td><a href="{% url 'archivo_vista' item.id %}" class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener">Abrir</a>
+        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#archivoModal" data-id="{{ item.id }}" data-nombre="{{ item.nombre }}"><i class="bi bi-trash3"></i></button>
         </td>
       </tr>
     {% endfor %}
@@ -80,6 +83,23 @@
 </div>
 
 <script>
+  async function loadDocumentStatuses() {
+    try {
+      const response = await fetch("{% url 'archivo_estado' %}", {credentials:'same-origin', cache:'no-store'});
+      if (!response.ok) throw new Error('Sin conexión');
+      const data = await response.json();
+      const labels = {indexed: 'Indexado', pending:'Sin indexar', missing:'No disponible', error:'Error'};
+      for (const doc of data.documents || []) {
+        const el = document.querySelector(`[data-index-file="${doc.id}"]`);
+        if (!el) continue;
+        el.className = 'badge ' + (doc.status === 'indexed' ? 'bg-success' : 'bg-warning text-dark');
+        el.textContent = (labels[doc.status] || 'Error') + (doc.status === 'indexed' ? ` (${doc.chunks})` : '');
+      }
+    } catch (error) {
+      document.querySelectorAll('[data-index-file]').forEach(el => el.textContent = 'Sin conexión');
+    }
+  }
+  loadDocumentStatuses();
   document.getElementById('searchInput').addEventListener('keyup', function() {
       const searchValue = this.value.toLowerCase();
       const rows = document.querySelectorAll('#archivos tbody tr');

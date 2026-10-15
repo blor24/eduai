@@ -4,6 +4,17 @@
 
 {% block content %}
 <p id="username" hidden>{{ username }}</p>
+<section class="card mb-3" aria-label="Documentos para consulta">
+  <div class="card-body py-2">
+    <div class="d-flex justify-content-between align-items-center">
+      <strong>Documentos para este chat</strong>
+      <button type="button" id="docs-select-all" class="btn btn-outline-secondary btn-sm">Seleccionar todos</button>
+    </div>
+    <div id="chat-files" style="max-height:128px; overflow-y:auto;" class="d-flex flex-wrap gap-3 mt-2"></div>
+    <small id="chat-files-status" class="text-muted" aria-live="polite">Cargando tus documentos...</small>
+    <form id="chat-documents-csrf" hidden>{% csrf_token %}</form>
+  </div>
+</section>
 <div id="chat-container" style="height: 80vh; position: relative; display: flex; flex-direction: column; border-radius: 8px; overflow: hidden;">
   
   <!-- Scrollable message list -->
@@ -87,6 +98,58 @@
   const modelsDropdown = document.getElementById('models');
   const modelsStatus = document.getElementById('models-status');
   const sendButton = document.getElementById('send-button');
+  let documentToken = null;
+  let selectedDocumentIds = [];
+  let userDocuments = [];
+  const docsTarget = document.getElementById('chat-files');
+  const docsStatus = document.getElementById('chat-files-status');
+  async function syncDocuments(ids) {
+    try {
+      const options = {credentials: 'same-origin', cache: 'no-store'};
+      if (ids !== undefined) {
+        options.method = 'POST';
+        options.headers = {'Content-Type':'application/json',
+          'X-CSRFToken': document.querySelector('#chat-documents-csrf [name=csrfmiddlewaretoken]').value};
+        options.body = JSON.stringify({ids});
+      }
+      const r = await fetch("{% url 'chat_documents' %}", options);
+      if (!r.ok) throw new Error('No se pudo guardar la selección');
+      const data = await r.json();
+      documentToken = data.token;
+      selectedDocumentIds = data.selected;
+      userDocuments = data.files;
+      docsTarget.replaceChildren();
+      for (const f of userDocuments) {
+        const label = document.createElement('label');
+        label.className = 'd-inline-flex align-items-center gap-1 small';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = f.id;
+        input.checked = selectedDocumentIds.includes(f.id);
+        input.addEventListener('change', () => {
+          const choices = Array.from(docsTarget.querySelectorAll('input:checked')).map(n => Number(n.value));
+          documentToken = null;
+          syncDocuments(choices);
+        });
+        label.append(input, document.createTextNode(f.name));
+        docsTarget.append(label);
+      }
+      docsStatus.textContent = `${data.selected_count} de ${data.total_count} documentos seleccionados`;
+      sendButton.disabled = !(documentToken && selectedDocumentIds.length && modelsDropdown.value);
+    } catch (e) {
+      documentToken = null;
+      docsStatus.textContent = 'No se pudo cargar la selección de documentos.';
+      sendButton.disabled = true;
+    }
+  }
+  document.getElementById('docs-select-all').addEventListener('click', () =>
+    syncDocuments(userDocuments.map(f => f.id)));
+  syncDocuments();
+  setInterval(() => syncDocuments(), 300000);
+  function escapeChatText(value) {
+    return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',
+      '"':'&quot;', "'":'&#39;'}[c]));
+  }
   async function refreshAvailableModels() {
     try {
       const response = await fetch("{% url 'chat_models' %}", {credentials:'same-origin', cache:'no-store'});
@@ -136,7 +199,7 @@
       
       if (responseElement) {
         // Actualiza el mensaje del LLM
-        responseElement.innerHTML = data.receiver_response;
+        responseElement.textContent = data.receiver_response;
         
         // Scroll para que sea visible
         var chatBox = document.getElementById("messages");
@@ -153,20 +216,20 @@
                         // Mensaje del usuario
                         +"<div class='card'>"
                         +"<div class='card-header'>"
-                          +"<h6 class='card-title text-end' id='sender-name'>"+`${data.username}`+"</h6>"
+                          +"<h6 class='card-title text-end' id='sender-name'>"                          +escapeChatText(data.username)+"</h6>"
                         +"</div>"
                         +"<div class='card-body' id='sender-content'>"
-                          +`${data.sender_content}`
+                                                    +escapeChatText(data.sender_content)
                         +"</div>"
                       +"</div>"
                       +"<div class='vr'></div>"
                       // Respuesta LLM
                       +"<div class='card'>"
                         +"<div class='card-header'>"
-                          +"<h6 class='card-title' id='receiver-name'>"+`${data.receiver}`+"</h6>"
+                          +"<h6 class='card-title' id='receiver-name'>"                          +escapeChatText(data.receiver)+"</h6>"
                         +"</div>"
                         +"<div class='card-body'>"
-                          +`${data.receiver_response}`
+                                                    +escapeChatText(data.receiver_response)
                         +"</div>"
                       +"</div>"
                       +"<div style='font-size: 12px; color: #6b7280; margin-top: 10px; text-align: right;'>"
@@ -190,8 +253,15 @@
       modelsStatus.textContent = 'No hay modelos disponibles.';
       return;
     }
+    if (!documentToken || !selectedDocumentIds.length) {
+      docsStatus.textContent = 'Selecciona primero uno o más documentos.';
+      return;
+    }
     
     var chatBox = document.getElementById("messages");
+    username = escapeChatText(username);
+    const safeMessageText = escapeChatText(messageText);
+    modelText = escapeChatText(modelText);
     const messageId = Date.now();
     
     // Crea un container para este mensaje con un atributo  para encontrarlo luego
@@ -202,7 +272,7 @@
                           +"<h6 class='card-title text-end' id='sender-name'>"+username+"</h6>"
                         +"</div>"
                         +"<div class='card-body' id='sender-content'>"
-                          +messageText
+                          +safeMessageText
                         +"</div>"
                       +"</div>"
                       +"<div class='vr'></div>"
@@ -233,7 +303,8 @@
       "username": username,
       "sender_content": messageText,
       "receiver": modelValue,
-      "messageId": messageId // Incluye messageId para identificar
+      "messageId": messageId,
+      "document_token": documentToken // Validado y firmado por Django
     };
     
     socket.send(message);

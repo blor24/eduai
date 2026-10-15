@@ -20,6 +20,7 @@ from django.urls import path
 from tesis import ollama_admin
 from tesis import ai_control
 from tesis import views 
+from tesis import document_views
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -59,6 +60,9 @@ urlpatterns = [
     path('dashboard/examen', views.examen, name='examen'),
     path('dashboard/generar', views.generar, name='generar'),
     path('dashboard/archivos', views.archivos, name='archivos'),
+    path('dashboard/archivos/estado/', document_views.document_status, name='archivo_estado'),
+    path('dashboard/archivos/<int:file_id>/ver/', document_views.document_preview, name='archivo_vista'),
+    path('dashboard/chat/documents/', document_views.chat_documents, name='chat_documents'),
     path('dashboard/cuenta', views.cuenta, name='cuenta'),
     path('dashboard/resultados', views.resultados, name='resultados'),
     path('track-session/', views.track_session, name='track_session')

@@ -40,3 +40,5 @@ backend/testing/rag.py
 
 .eduai_ai_backup/
 .eduai_odf_backup/
+
+.eduai_documents_backup/

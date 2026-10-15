@@ -16,11 +16,12 @@ Answer:''', input_variables=['question', 'documents'])
 
 
 class PDFStorage:
-    def __init__(self, username):
+    def __init__(self, username, filenames=None):
         self.username = username
+        self.filenames = filenames
 
     def retrieve(self):
-        return VectorStorageManager().retriever(self.username)
+        return VectorStorageManager().retriever(self.username, self.filenames)
 
 
 class ChooseModel:
