@@ -66,3 +66,24 @@ class AITestCaseAdmin(admin.ModelAdmin):
     list_display = ('username', 'query', 'expected_filename', 'enabled')
     list_filter = ('enabled',)
     search_fields = ('username', 'query', 'expected_filename')
+
+# EDUAI_BANCO_V1: administración (filtros y búsqueda) para superusuarios de Django
+from .banco_models import BancoPregunta, ExamenGuardado, ExamenGuardadoItem
+
+@admin.register(BancoPregunta)
+class BancoPreguntaAdmin(admin.ModelAdmin):
+    list_display = ('id', 'usuario', 'tipo', 'dificultad', 'tema', 'archivo', 'creado')
+    list_filter = ('tipo', 'dificultad', 'creado')
+    search_fields = ('usuario__username', 'tema', 'enunciado')
+    readonly_fields = ('creado', 'actualizado')
+
+@admin.register(ExamenGuardado)
+class ExamenGuardadoAdmin(admin.ModelAdmin):
+    list_display = ('id', 'titulo', 'usuario', 'creado')
+    search_fields = ('titulo', 'usuario__username')
+    readonly_fields = ('creado',)
+
+@admin.register(ExamenGuardadoItem)
+class ExamenGuardadoItemAdmin(admin.ModelAdmin):
+    list_display = ('id', 'examen', 'posicion', 'tipo')
+    list_select_related = ('examen',)

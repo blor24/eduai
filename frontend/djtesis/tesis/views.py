@@ -397,7 +397,9 @@ def examen(request):
                 if response.status_code == 200:
                     preguntas = response.json() 
                     request.session['quiz_questions'] = json.dumps(preguntas)
-                    context = {'page':'examen', 'subidos': subidos, 'preguntas':preguntas, 'ready':1}
+                    request.session['quiz_source_file_id'] = archivo.pk
+                    request.session['quiz_bank_saved'] = False
+                    context = {'page':'examen', 'subidos': subidos, 'preguntas':preguntas, 'ready':1, 'puede_guardar_banco':True}
 
                     return render(request, "tesis/examen.html", context)
                 else:
@@ -406,6 +408,16 @@ def examen(request):
                     messages.error(request, error_message)
             except Exception as e:
                 messages.error(request, f"Error al generar preguntas: {e}")
+    active = request.session.get('quiz_questions')
+    if active:
+        try:
+            preguntas = json.loads(active) if isinstance(active, str) else active
+            return render(request, 'tesis/examen.html', {
+                'page': 'examen', 'subidos': subidos, 'preguntas': preguntas, 'ready': 1,
+                'puede_guardar_banco': not request.session.get('quiz_bank_saved', False),
+            })
+        except (ValueError, TypeError):
+            request.session.pop('quiz_questions', None)
     context = {'page':'examen', 'subidos': subidos}
     return render(request, "tesis/examen.html", context)
 

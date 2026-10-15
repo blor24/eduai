@@ -1,0 +1,15 @@
+{% extends 'tesis/base.html' %}
+{% block title %}{{ examen.titulo }}{% endblock %}
+{% block section %}{{ examen.titulo }}{% endblock %}
+{% block content %}
+{% if messages %}{% for m in messages %}<div class="alert alert-warning">{{ m }}</div>{% endfor %}{% endif %}
+<p>{{ examen.descripcion }}</p><p class="text-muted">Examen guardado el {{ examen.creado|date:'d/m/Y H:i' }}</p>
+<div class="d-flex gap-2 flex-wrap mb-3">
+<form method="post" action="{% url 'banco_practicar_examen' examen.pk %}">{% csrf_token %}<button class="btn btn-success">Iniciar examen sin generar preguntas</button></form>
+<form method="post" action="{% url 'banco_eliminar_examen' examen.pk %}" onsubmit="return confirm('¿Eliminar este examen? Las preguntas originales permanecerán.')">{% csrf_token %}<button class="btn btn-outline-danger">Eliminar examen</button></form>
+<a class="btn btn-outline-secondary" href="{% url 'banco_examenes' %}">Volver</a>
+</div>
+{% for item in examen.items.all %}<div class="card mb-2"><div class="card-body"><span class="badge bg-secondary">{{ item.get_tipo_display }}</span> <strong>{{ item.contenido.question }}</strong>
+{% if item.tipo == 'emparejar' %}<p class="text-muted">{{ item.contenido.terms|length }} pares de términos y conceptos</p>{% else %}<p class="text-muted">Respuesta: {{ item.contenido.correct_answer }}</p>{% endif %}
+</div></div>{% endfor %}
+{% endblock %}

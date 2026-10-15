@@ -20,6 +20,7 @@ from django.urls import path
 from tesis import ollama_admin
 from tesis import ai_control
 from tesis import views 
+from tesis import banco_views
 from tesis import document_views
 from django.conf import settings
 from django.conf.urls.static import static
@@ -57,6 +58,16 @@ urlpatterns = [
     path('dashboard/chat/models/', views.available_ollama_models, name='chat_models'),
     path('dashboard/chat', views.chat, name='chat'),
     path('dashboard/chat/save_mensaje/', views.save_mensaje, name='mensaje'),
+    path('dashboard/banco/', banco_views.banco, name='banco_lista'),
+    path('dashboard/banco/nueva/', banco_views.pregunta_editar, name='banco_nueva'),
+    path('dashboard/banco/<int:pk>/editar/', banco_views.pregunta_editar, name='banco_editar'),
+    path('dashboard/banco/<int:pk>/eliminar/', banco_views.pregunta_eliminar, name='banco_eliminar'),
+    path('dashboard/banco/importar/', banco_views.importar_generadas, name='banco_importar'),
+    path('dashboard/banco/examenes/', banco_views.examenes_guardados, name='banco_examenes'),
+    path('dashboard/banco/examenes/crear/', banco_views.examen_crear, name='banco_crear_examen'),
+    path('dashboard/banco/examenes/<int:pk>/', banco_views.examen_detalle, name='banco_detalle_examen'),
+    path('dashboard/banco/examenes/<int:pk>/practicar/', banco_views.examen_practicar, name='banco_practicar_examen'),
+    path('dashboard/banco/examenes/<int:pk>/eliminar/', banco_views.examen_eliminar, name='banco_eliminar_examen'),
     path('dashboard/examen', views.examen, name='examen'),
     path('dashboard/generar', views.generar, name='generar'),
     path('dashboard/archivos', views.archivos, name='archivos'),

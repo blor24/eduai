@@ -1,0 +1,17 @@
+{% extends 'tesis/base.html' %}
+{% block title %}Crear examen reutilizable{% endblock %}
+{% block section %}Crear examen reutilizable{% endblock %}
+{% block content %}
+{% if messages %}{% for m in messages %}<div class="alert alert-warning">{{ m }}</div>{% endfor %}{% endif %}
+<form method="post">{% csrf_token %}
+<div class="row g-2 mb-3"><div class="col-md-5"><label class="form-label">Título del examen</label><input name="titulo" maxlength="160" required class="form-control" placeholder="Ej.: Biología - Unidad 1"></div>
+<div class="col-md-7"><label class="form-label">Descripción (opcional)</label><input name="descripcion" class="form-control" maxlength="2000"></div></div>
+<p class="text-muted">Selecciona entre 1 y {{ max_preguntas }} preguntas. Se guardará una copia de cada pregunta, de modo que posteriores ediciones no cambien este examen.</p>
+{% for p in preguntas %}<label class="card mb-2"><div class="card-body d-flex gap-3 align-items-start">
+<input class="form-check-input mt-1" type="checkbox" name="preguntas" value="{{ p.id }}">
+<div><strong>{{ p.enunciado }}</strong><div class="text-muted small">{{ p.get_tipo_display }} · {{ p.get_dificultad_display }} {% if p.tema %}· {{ p.tema }}{% endif %}{% if p.archivo %} · {{ p.archivo.nombre }}{% endif %}</div></div>
+</div></label>{% empty %}<p class="alert alert-warning">No hay preguntas. <a href="{% url 'banco_nueva' %}">Crea tu primera pregunta</a>.</p>{% endfor %}
+<button class="btn btn-success" {% if not preguntas %}disabled{% endif %}>Guardar examen reutilizable</button>
+<a class="btn btn-outline-secondary" href="{% url 'banco_lista' %}">Volver al banco</a>
+</form>
+{% endblock %}

@@ -3,6 +3,7 @@
 {% block section %}Examen{% endblock %} 
 
 {% block content %}
+<p><a class='btn btn-sm btn-outline-secondary' href='{% url "banco_lista" %}'>Ir al banco de preguntas</a></p>
 
 {% if messages %}
   {% for message in messages %}
@@ -105,6 +106,15 @@
 
 {% if ready == 1%}
   <h2>Examen generado</h2>
+  {% if puede_guardar_banco %}
+  <form method="post" action="{% url 'banco_importar' %}" class="d-flex flex-wrap gap-2 align-items-end p-3 border rounded mb-3">
+    {% csrf_token %}
+    <div><label class="form-label">Tema (opcional)</label><input name="tema" maxlength="120" class="form-control" placeholder="Tema o unidad"></div>
+    <div><label class="form-label">Dificultad</label><select name="dificultad" class="form-select"><option value="basica">Básica</option><option value="intermedia" selected>Intermedia</option><option value="avanzada">Avanzada</option></select></div>
+    <button class="btn btn-outline-success" type="submit"><i class="bi bi-save"></i> Guardar preguntas en mi banco</button>
+  </form>
+  {% endif %}
+
   <form method="POST">
     {% csrf_token %}
     {% for tipo, data in preguntas.items %}

@@ -1,0 +1,36 @@
+{% extends 'tesis/base.html' %}
+{% block title %}Banco de preguntas{% endblock %}
+{% block section %}Banco de preguntas{% endblock %}
+{% block content %}
+{% if messages %}{% for m in messages %}<div class="alert alert-info">{{ m }}</div>{% endfor %}{% endif %}
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <a href="{% url 'banco_nueva' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Nueva pregunta</a>
+  <a href="{% url 'banco_crear_examen' %}" class="btn btn-success">Crear examen con preguntas guardadas</a>
+  <a href="{% url 'banco_examenes' %}" class="btn btn-outline-secondary">Mis exámenes</a>
+</div>
+<form method="get" class="row g-2 mb-3">
+  <div class="col-md-4"><input type="search" class="form-control" name="q" value="{{ filtro.q }}" placeholder="Buscar por tema o pregunta"></div>
+  <div class="col-md-2"><select name="tipo" class="form-select"><option value="">Todos los tipos</option>{% for key,label in tipos %}<option value="{{ key }}" {% if filtro.tipo == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><select name="dificultad" class="form-select"><option value="">Dificultad</option>{% for key,label in dificultades %}<option value="{{ key }}" {% if filtro.dificultad == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <div class="col-md-3"><select name="archivo" class="form-select"><option value="">Cualquier documento</option>{% for archivo in archivos %}<option value="{{ archivo.id }}" {% if filtro.archivo == archivo.id|stringformat:'s' %}selected{% endif %}>{{ archivo.nombre }}</option>{% endfor %}</select></div>
+  <div class="col-md-1"><button class="btn btn-outline-primary" type="submit">Filtrar</button></div>
+</form>
+{% for p in preguntas %}
+<div class="card mb-2"><div class="card-body">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+    <div><span class="badge bg-secondary">{{ p.get_tipo_display }}</span> <span class="badge bg-info text-dark">{{ p.get_dificultad_display }}</span> {% if p.tema %}<span class="text-muted small">Tema: {{ p.tema }}</span>{% endif %}</div>
+    <div class="d-flex gap-2"><a class="btn btn-sm btn-outline-primary" href="{% url 'banco_editar' p.pk %}">Editar</a>
+      <form method="post" action="{% url 'banco_eliminar' p.pk %}" onsubmit="return confirm('¿Eliminar esta pregunta?')">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button></form></div>
+  </div>
+  <p class="mt-2 mb-1"><strong>{{ p.enunciado }}</strong></p>
+  {% if p.archivo %}<small class="text-muted">Documento: {{ p.archivo.nombre }}</small>{% else %}<small class="text-muted">Sin documento asociado</small>{% endif %}
+  {% if p.tipo == 'multiple' %}<ul class="mb-1 mt-2">{% for opcion in p.opciones %}<li>{{ opcion }}</li>{% endfor %}</ul>{% endif %}
+  {% if p.tipo == 'emparejar' %}<small class="text-muted">{{ p.terminos|length }} pares para emparejar</small>{% else %}<p class="mb-0 text-success small">Respuesta: {{ p.respuesta_correcta }}</p>{% endif %}
+</div></div>
+{% empty %}<div class="alert alert-light border">Aún no tienes preguntas guardadas con estos filtros. Puedes crearlas o importar un examen generado desde la pantalla Examen.</div>{% endfor %}
+{% if preguntas.has_other_pages %}<nav aria-label="Paginación"><ul class="pagination">
+{% if preguntas.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ preguntas.previous_page_number }}&q={{ filtro.q|urlencode }}&tipo={{ filtro.tipo }}&dificultad={{ filtro.dificultad }}&archivo={{ filtro.archivo }}">Anterior</a></li>{% endif %}
+<li class="page-item disabled"><span class="page-link">{{ preguntas.number }} de {{ preguntas.paginator.num_pages }}</span></li>
+{% if preguntas.has_next %}<li class="page-item"><a class="page-link" href="?page={{ preguntas.next_page_number }}&q={{ filtro.q|urlencode }}&tipo={{ filtro.tipo }}&dificultad={{ filtro.dificultad }}&archivo={{ filtro.archivo }}">Siguiente</a></li>{% endif %}
+</ul></nav>{% endif %}
+{% endblock %}

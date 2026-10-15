@@ -36,3 +36,6 @@ class Mensaje(models.Model):
 from .ai_models import AIConfiguration, AIJob, AITestCase
 
 # EDUAI_FUENTES_V1
+
+# EDUAI_BANCO_V1
+from .banco_models import BancoPregunta, ExamenGuardado, ExamenGuardadoItem
