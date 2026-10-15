@@ -51,7 +51,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(BASE_DB_FOLDER, exist_ok=True)
 
 # Extensiones definidas.
-ALLOWED_EXTENSIONS = {'.pdf', '.txt', '.docx', '.pptx'}
+ALLOWED_EXTENSIONS = {'.docx', '.fodt', '.md', '.odt', '.pdf', '.pptx', '.txt'}
 
 ### METODOS PARA ENDPOINTS
 def allowed_file(filename):
@@ -82,7 +82,7 @@ def upload():
 
         # Chequea las extensiones permitidas.
         if not allowed_file(filename):
-            return jsonify({'status': 'error', 'message': 'Extensión de archivo no permitido. Solo archivos .pdf, .doc, .docx, y .pptx son aceptados.'}), 400
+            return jsonify({'status': 'error', 'message': 'Extensión no permitida. Admitidos: ' + ', '.join(sorted(ALLOWED_EXTENSIONS))}), 400
 
         file_path = os.path.join(user_folder, filename)
 

@@ -117,7 +117,7 @@ class VectorStorageManager:
                     built.append((username, vs))
                     count = 0
                     for file in sorted(user_dir.iterdir()):
-                        if not file.is_file() or file.suffix.lower() not in ('.pdf', '.docx', '.pptx', '.txt'):
+                        if not file.is_file() or file.suffix.lower() not in ('.docx', '.fodt', '.md', '.odt', '.pdf', '.pptx', '.txt'):
                             continue
                         text = self.extractor.get_text(str(file))
                         if not text or not text.strip():

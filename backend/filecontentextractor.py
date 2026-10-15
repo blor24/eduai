@@ -1,3 +1,4 @@
+from opendocument_text import extract_odf_text
 import os
 from docx import Document
 from pptx import Presentation
@@ -132,8 +133,11 @@ class FileContentExtractor:
         elif ext == ".pptx":
             return self.extract_images_pptx(file_path) if self.is_pptx_mostly_images(file_path) else self.read_pptx(file_path)
 
-        elif ext == ".txt":
+        elif ext in (".txt", ".md"):
             return self.read_txt(file_path)
+
+        elif ext in (".odt", ".fodt"):
+            return extract_odf_text(file_path)
 
         else:
             raise ValueError(f"Unsupported file type: {ext}")
