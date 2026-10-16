@@ -4,6 +4,7 @@ from langchain_ollama import OllamaLLM
 from vectorstorage import VectorStorageManager
 from langchain_core.output_parsers import JsonOutputParser
 from ai_runtime import config
+from eduai_difficulty import instrucciones, plan_generacion, NIVELES
 import os, json, math
 from fpdf import FPDF
 
@@ -61,10 +62,13 @@ class QuestionGenerator:
                     ]
                 }}
 
+                **COGNITIVE DIFFICULTY INSTRUCTIONS:**
+                {difficulty_guide}
+
                 Text:
                 {documents}
                 """,
-            input_variables=["number", "documents"]
+            input_variables=["number", "documents", "difficulty_guide"]
         )
 
     def _build_short_answer_prompt(self):
@@ -104,10 +108,13 @@ class QuestionGenerator:
                     ]
                 }}
 
+                **COGNITIVE DIFFICULTY INSTRUCTIONS:**
+                {difficulty_guide}
+
                 Text:
                 {documents}
                 """,
-            input_variables=["number", "documents"]
+            input_variables=["number", "documents", "difficulty_guide"]
         )
 
     def _build_fill_blank_prompt(self):
@@ -149,10 +156,13 @@ class QuestionGenerator:
                 ]
                 }}
 
+                **COGNITIVE DIFFICULTY INSTRUCTIONS:**
+                {difficulty_guide}
+
                 Text:
                 {documents}
                 """,
-            input_variables=["number", "documents"]
+            input_variables=["number", "documents", "difficulty_guide"]
         )
 
     def _build_match_prompt(self):
@@ -186,10 +196,13 @@ class QuestionGenerator:
                 ]
                 }}
 
+                **COGNITIVE DIFFICULTY INSTRUCTIONS:**
+                {difficulty_guide}
+
                 Text:
                 {documents}
                 """,
-            input_variables=["number", "documents"]
+            input_variables=["number", "documents", "difficulty_guide"]
         )
 
     def get_documents(self, namespace, filename):
@@ -230,12 +243,12 @@ class QuestionGenerator:
                 raise ValueError('Falta ___ en la pregunta de completar')
         return items
 
-    def _batch(self, kind, amount, passage):
+    def _batch(self, kind, amount, passage, dificultad):
         chain = self.prompts[kind] | self.llm | JsonOutputParser()
         last_error = None
         for attempt in range(2):
             try:
-                raw = chain.invoke({'number': amount, 'documents': passage})
+                raw = chain.invoke({'number': amount, 'documents': passage, 'difficulty_guide': instrucciones(dificultad)})
                 return self.validate_result(kind, raw, amount)
             except (ValueError, KeyError, TypeError, json.JSONDecodeError) as error:
                 last_error = error
@@ -244,23 +257,28 @@ class QuestionGenerator:
     def generate_questions(self, question_type, number, namespace, filename):
         return json.dumps(self.generate_all_types([question_type], number, namespace, filename)[question_type], ensure_ascii=False)
 
-    def generate_all_types(self, types, number, namespace, filename):
+    def generate_all_types(self, types, number, namespace, filename, dificultad='intermedia'):
         number = int(number)
         if not 1 <= number <= 40:
             raise ValueError('El número de preguntas debe estar entre 1 y 40')
         if not types or any(kind not in self.prompts for kind in types):
             raise ValueError('Tipo de pregunta no permitido')
+        if dificultad not in NIVELES:
+            raise ValueError('Dificultad no permitida')
         docs = self.get_documents(namespace, filename)
         results = {}
         for kind in types:
-            batches = 1 if kind == 'emparejar' else math.ceil(number / 4)
+            plan = plan_generacion(kind, number, dificultad)
             all_items = []
-            for i in range(batches):
-                amount = number if kind == 'emparejar' else min(4, number - len(all_items))
-                position = min(len(docs) - 1, int(i * len(docs) / batches))
+            for i, (level, amount) in enumerate(plan):
+                position = min(len(docs) - 1, int(i * len(docs) / len(plan)))
                 # Distribuye las preguntas sobre distintas secciones; nunca concatena todo el PDF.
                 passage = '\n'.join(docs[position:position+3])[:4200]
-                all_items.extend(self._batch(kind, amount, passage))
+                items = self._batch(kind, amount, passage, level)
+                for item in items:
+                    # Metadato interno, nunca solicitado al LLM.
+                    item['eduai_dificultad'] = level if level != 'mixta' else 'intermedia'
+                all_items.extend(items)
             results[kind] = {'questions': all_items}
         return results
 

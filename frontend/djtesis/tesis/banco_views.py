@@ -80,14 +80,25 @@ def importar_generadas(request):
     archivo_id = request.session.get('quiz_source_file_id')
     archivo = Archivo.objects.filter(pk=archivo_id, user=request.user).first() if archivo_id else None
     tema = (request.POST.get('tema') or '').strip()[:120]
-    dificultad = request.POST.get('dificultad', 'intermedia')
-    if dificultad not in dict(BancoPregunta.DIFICULTADES):
-        dificultad = 'intermedia'
+    solicitada = request.session.get('quiz_requested_difficulty', 'intermedia')
+    if solicitada not in ('basica', 'intermedia', 'avanzada', 'mixta'):
+        solicitada = 'intermedia'
+    # Conserva el orden de los grupos y preguntas del JSON antes de normalizarlos.
+    original = json.loads(current) if isinstance(current, str) else current
+    etiquetas = [q.get('eduai_dificultad') for grupo in original.values()
+                 for q in grupo.get('questions', [])]
+    if len(etiquetas) != len(preguntas):
+        messages.error(request, 'Inconsistencia en las etiquetas de dificultad.')
+        return redirect('examen')
     try:
         with transaction.atomic():
-            for data in preguntas:
+            for data, etiqueta in zip(preguntas, etiquetas):
+                nivel = etiqueta if etiqueta in dict(BancoPregunta.DIFICULTADES) else (
+                    solicitada if solicitada in dict(BancoPregunta.DIFICULTADES) else 'intermedia'
+                )
                 instance = BancoPregunta(
-                    usuario=request.user, archivo=archivo, tema=tema, dificultad=dificultad, **data
+                    usuario=request.user, archivo=archivo, tema=tema,
+                    dificultad=nivel, dificultad_solicitada=solicitada, **data
                 )
                 instance.full_clean()
                 instance.save()
@@ -162,6 +173,7 @@ def examen_practicar(request, pk):
     request.session['quiz_questions'] = json.dumps(data, ensure_ascii=False)
     request.session['quiz_source_file_id'] = None
     request.session['quiz_bank_saved'] = True
+    request.session['quiz_requested_difficulty'] = 'intermedia'
     return redirect('examen')
 
 

@@ -17,7 +17,7 @@
 <div class="container border-bottom mb-3">
   <form id="generarForm" method="post" class="needs-validation" novalidate>
     {% csrf_token %}
-    <div class="row row-cols-4">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-5 g-3">
       <div class="col">
         <select id="archivoSelect" name="archivoSelect" class="form-select" aria-label="Seleccione archivos" required>
           <option value="">Seleccione un archivo</option>
@@ -95,6 +95,15 @@
         <div class="invalid-feedback" id="checkboxFeedback">
           Por favor seleccione al menos un tipo de pregunta.
         </div>
+      </div>
+      <div class="col">
+        <label for="dificultadSelect" class="form-label">Dificultad <a href="{% url 'ayuda' %}#examenes" title="Qué cambia con la dificultad" aria-label="Ayuda sobre la dificultad"><i class="bi bi-question-circle"></i></a></label>
+        <select class="form-select" id="dificultadSelect" name="dificultad" required>
+          <option value="basica">Básica</option>
+          <option value="intermedia" selected>Intermedia</option>
+          <option value="avanzada">Avanzada</option>
+          <option value="mixta">Mixta</option>
+        </select>
       </div>
       <div class="col d-flex align-items-center">
         <button type="submit" id="btnGenerar" class="btn btn-success" disabled>Generar archivo</button>

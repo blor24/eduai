@@ -68,6 +68,7 @@ urlpatterns = [
     path('dashboard/banco/examenes/<int:pk>/', banco_views.examen_detalle, name='banco_detalle_examen'),
     path('dashboard/banco/examenes/<int:pk>/practicar/', banco_views.examen_practicar, name='banco_practicar_examen'),
     path('dashboard/banco/examenes/<int:pk>/eliminar/', banco_views.examen_eliminar, name='banco_eliminar_examen'),
+    path('dashboard/ayuda/', views.ayuda, name='ayuda'),
     path('dashboard/examen', views.examen, name='examen'),
     path('dashboard/generar', views.generar, name='generar'),
     path('dashboard/archivos', views.archivos, name='archivos'),

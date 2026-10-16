@@ -18,7 +18,7 @@
 {% for p in preguntas %}
 <div class="card mb-2"><div class="card-body">
   <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-    <div><span class="badge bg-secondary">{{ p.get_tipo_display }}</span> <span class="badge bg-info text-dark">{{ p.get_dificultad_display }}</span> {% if p.tema %}<span class="text-muted small">Tema: {{ p.tema }}</span>{% endif %}</div>
+    <div><span class="badge bg-secondary">{{ p.get_tipo_display }}</span> <span class="badge bg-info text-dark">{{ p.get_dificultad_display }}</span> <span class="text-muted small" title="Dificultad solicitada al generador (no verificada automáticamente)">Solicitada: {{ p.get_dificultad_solicitada_display }}</span> {% if p.tema %}<span class="text-muted small">Tema: {{ p.tema }}</span>{% endif %}</div>
     <div class="d-flex gap-2"><a class="btn btn-sm btn-outline-primary" href="{% url 'banco_editar' p.pk %}">Editar</a>
       <form method="post" action="{% url 'banco_eliminar' p.pk %}" onsubmit="return confirm('¿Eliminar esta pregunta?')">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit">Eliminar</button></form></div>
   </div>

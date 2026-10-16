@@ -13,6 +13,7 @@ class BancoPregunta(models.Model):
                                related_name='preguntas_banco')
     tipo = models.CharField(max_length=12, choices=TIPOS)
     dificultad = models.CharField(max_length=12, choices=DIFICULTADES, default='intermedia')
+    dificultad_solicitada = models.CharField(max_length=12, choices=DIFICULTADES + [('mixta', 'Mixta')], default='intermedia', editable=False)
     tema = models.CharField(max_length=120, blank=True)
     enunciado = models.TextField()
     opciones = models.JSONField(default=list, blank=True)

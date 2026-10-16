@@ -43,3 +43,4 @@ backend/testing/rag.py
 
 .eduai_documents_backup/
 .eduai_banco_backup/
+.eduai_guia_backup/

@@ -378,6 +378,10 @@ def examen(request):
             archivo = Archivo.objects.get(user=request.user, id=int(request.POST.get('archivoSelect')))
             num_preguntas = int(request.POST.get('numPreguntas'))
             tipo_preguntas = request.POST.getlist('tipoPregunta')
+            dificultad = request.POST.get('dificultad', 'intermedia')
+            if dificultad not in ('basica', 'intermedia', 'avanzada', 'mixta'):
+                messages.error(request, 'Dificultad de examen inválida.')
+                return redirect('examen')
 
             flask_url = f"{FLASK_BASE_URL}/exam"
             
@@ -385,7 +389,8 @@ def examen(request):
                 'username': username,
                 'archivo': archivo,
                 'numero': num_preguntas,
-                'tipo': tipo_preguntas
+                'tipo': tipo_preguntas,
+                'dificultad': dificultad
             }
 
             try:
@@ -399,7 +404,8 @@ def examen(request):
                     request.session['quiz_questions'] = json.dumps(preguntas)
                     request.session['quiz_source_file_id'] = archivo.pk
                     request.session['quiz_bank_saved'] = False
-                    context = {'page':'examen', 'subidos': subidos, 'preguntas':preguntas, 'ready':1, 'puede_guardar_banco':True}
+                    request.session['quiz_requested_difficulty'] = dificultad
+                    context = {'page':'examen', 'subidos': subidos, 'preguntas':preguntas, 'ready':1, 'puede_guardar_banco':True, 'dificultad_solicitada':dificultad.title()}
 
                     return render(request, "tesis/examen.html", context)
                 else:
@@ -415,11 +421,17 @@ def examen(request):
             return render(request, 'tesis/examen.html', {
                 'page': 'examen', 'subidos': subidos, 'preguntas': preguntas, 'ready': 1,
                 'puede_guardar_banco': not request.session.get('quiz_bank_saved', False),
+                'dificultad_solicitada': request.session.get('quiz_requested_difficulty', 'intermedia').title(),
             })
         except (ValueError, TypeError):
             request.session.pop('quiz_questions', None)
     context = {'page':'examen', 'subidos': subidos}
     return render(request, "tesis/examen.html", context)
+
+# EDUAI_GUIDE_DIFFICULTY_V1
+@login_required(login_url='index')
+def ayuda(request):
+    return render(request, 'tesis/ayuda.html', {'page': 'ayuda'})
 
 @login_required(login_url='index')
 def resultados(request):
@@ -436,6 +448,10 @@ def generar(request):
         nombre_archivo = os.path.splitext(archivo.nombre)[0]  # elimina la extension del archivo
         num_preguntas = int(request.POST.get('numPreguntas'))
         tipo_preguntas = request.POST.getlist('tipoPregunta')
+        dificultad = request.POST.get('dificultad', 'intermedia')
+        if dificultad not in ('basica', 'intermedia', 'avanzada', 'mixta'):
+            messages.error(request, 'Dificultad de generación inválida.')
+            return redirect('generar')
 
         flask_url = f"{FLASK_BASE_URL}/file"
 
@@ -443,7 +459,8 @@ def generar(request):
             'username': username,
             'archivo': archivo,
             'numero': num_preguntas,
-            'tipo': tipo_preguntas
+            'tipo': tipo_preguntas,
+            'dificultad': dificultad
         }
 
         try:

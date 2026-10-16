@@ -254,9 +254,10 @@ def file():
         archivo = request.form.get('archivo') 
         numero = request.form.get('numero')  
         tipo = request.form.getlist('tipo')  
+        dificultad = request.form.get('dificultad', 'intermedia')
         
         # Genera las preguntas
-        results = qgen.generate_all_types(types=tipo, number=numero, namespace=username, filename=archivo)
+        results = qgen.generate_all_types(types=tipo, number=numero, namespace=username, filename=archivo, dificultad=dificultad)
 
         # Path para guardar archivo
         folder_path = Path("exports") / username / archivo
@@ -296,11 +297,12 @@ def exam():
         archivo = request.form.get('archivo') 
         numero = request.form.get('numero')  
         tipo = request.form.getlist('tipo')  
+        dificultad = request.form.get('dificultad', 'intermedia')
         
         print(archivo)
 
         # Genera las preguntas
-        results = qgen.generate_all_types(types=tipo, number=numero, namespace=username, filename=archivo)
+        results = qgen.generate_all_types(types=tipo, number=numero, namespace=username, filename=archivo, dificultad=dificultad)
 
         # Retorna resultados
         return jsonify(results)

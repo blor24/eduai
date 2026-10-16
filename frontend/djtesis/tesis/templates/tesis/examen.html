@@ -17,7 +17,7 @@
 <div class="container border-bottom mb-3">
   <form id="generarForm" method="post" class="needs-validation" novalidate>
     {% csrf_token %}
-    <div class="row row-cols-4">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-5 g-3">
       <div class="col">
         <select id="archivoSelect" name="archivoSelect" class="form-select" aria-label="Seleccione archivos" required>
           <option value="">Seleccione un archivo</option>
@@ -96,6 +96,15 @@
           Por favor seleccione al menos un tipo de pregunta.
         </div>
       </div>
+      <div class="col">
+        <label for="dificultadSelect" class="form-label">Dificultad <a href="{% url 'ayuda' %}#examenes" title="Qué cambia con la dificultad" aria-label="Ayuda sobre la dificultad"><i class="bi bi-question-circle"></i></a></label>
+        <select class="form-select" id="dificultadSelect" name="dificultad" required>
+          <option value="basica">Básica</option>
+          <option value="intermedia" selected>Intermedia</option>
+          <option value="avanzada">Avanzada</option>
+          <option value="mixta">Mixta</option>
+        </select>
+      </div>
       <div class="col d-flex align-items-center">
         <button type="submit" id="btnGenerar" name="generate_quiz" class="btn btn-success" disabled>Generar examen</button>
       </div>
@@ -106,11 +115,12 @@
 
 {% if ready == 1%}
   <h2>Examen generado</h2>
+  <p class="text-muted small">Nivel solicitado: {{ dificultad_solicitada|default:"Intermedia" }}. Comprueba que las preguntas y respuestas sean apropiadas.</p>
   {% if puede_guardar_banco %}
   <form method="post" action="{% url 'banco_importar' %}" class="d-flex flex-wrap gap-2 align-items-end p-3 border rounded mb-3">
     {% csrf_token %}
     <div><label class="form-label">Tema (opcional)</label><input name="tema" maxlength="120" class="form-control" placeholder="Tema o unidad"></div>
-    <div><label class="form-label">Dificultad</label><select name="dificultad" class="form-select"><option value="basica">Básica</option><option value="intermedia" selected>Intermedia</option><option value="avanzada">Avanzada</option></select></div>
+    <div class="small text-muted">Dificultad solicitada: <strong>{{ dificultad_solicitada|default:"Intermedia" }}</strong>. Las etiquetas iniciales pueden revisarse individualmente en el banco.</div>
     <button class="btn btn-outline-success" type="submit"><i class="bi bi-save"></i> Guardar preguntas en mi banco</button>
   </form>
   {% endif %}

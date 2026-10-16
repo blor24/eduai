@@ -72,7 +72,7 @@ from .banco_models import BancoPregunta, ExamenGuardado, ExamenGuardadoItem
 
 @admin.register(BancoPregunta)
 class BancoPreguntaAdmin(admin.ModelAdmin):
-    list_display = ('id', 'usuario', 'tipo', 'dificultad', 'tema', 'archivo', 'creado')
+    list_display = ('id', 'usuario', 'tipo', 'dificultad', 'dificultad_solicitada', 'tema', 'archivo', 'creado')
     list_filter = ('tipo', 'dificultad', 'creado')
     search_fields = ('usuario__username', 'tema', 'enunciado')
     readonly_fields = ('creado', 'actualizado')

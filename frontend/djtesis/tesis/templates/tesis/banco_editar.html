@@ -3,6 +3,7 @@
 {% block section %}{% if editando %}Editar pregunta{% else %}Nueva pregunta{% endif %}{% endblock %}
 {% block content %}
 <div class="alert alert-secondary">Para selección múltiple ingresa 4 opciones, una por línea, y copia exactamente la correcta en «Respuesta correcta». Para completar, incluye <code>___</code> y una respuesta de una palabra. Para emparejar, cada línea de «Términos» debe corresponder a la misma línea de «Conceptos».</div>
+{% if editando %}<p class="small text-muted">Dificultad solicitada durante la generación: <strong>{{ form.instance.get_dificultad_solicitada_display }}</strong>. La dificultad editable es una clasificación revisable, no verificación automática.</p>{% endif %}
 <form method="post" class="card card-body" style="max-width:850px">{% csrf_token %}
 {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
 {% for f in form %}<div class="mb-3"><label for="{{ f.id_for_label }}" class="form-label fw-semibold">{{ f.label }}</label>{{ f }}{% for error in f.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endfor %}

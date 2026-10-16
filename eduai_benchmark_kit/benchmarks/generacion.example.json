@@ -1,0 +1,10 @@
+[
+  {
+    "id": "preguntas_biologia",
+    "username": "REEMPLAZAR_USUARIO",
+    "filename": "REEMPLAZAR_DOCUMENTO.pdf",
+    "difficulty": "intermedia",
+    "number": 2,
+    "types": ["multiple", "corta", "espacio", "emparejar"]
+  }
+]

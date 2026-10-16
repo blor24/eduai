@@ -7,7 +7,7 @@
 <section class="card mb-3" aria-label="Documentos para consulta">
   <div class="card-body py-2">
     <div class="d-flex justify-content-between align-items-center">
-      <strong>Documentos para este chat</strong>
+      <strong>Documentos para este chat <a href="{% url 'ayuda' %}#chat" aria-label="Cómo seleccionar documentos" title="Cómo funciona la selección"><i class="bi bi-question-circle"></i></a></strong>
       <button type="button" id="docs-select-all" class="btn btn-outline-secondary btn-sm">Seleccionar todos</button>
     </div>
     <div id="chat-files" style="max-height:128px; overflow-y:auto;" class="d-flex flex-wrap gap-3 mt-2"></div>
@@ -39,7 +39,7 @@
           {{ msg.receiver_response }}
           {% if msg.fuentes_vista %}
           <div class="eduai-chat-sources border-top mt-3 pt-2" aria-label="Fragmentos recuperados">
-            <strong class="small">Fuentes y fragmentos consultados</strong>
+            <strong class="small">Fuentes y fragmentos consultados <a href="{% url 'ayuda' %}#chat" title="Cómo interpretar estas fuentes" aria-label="Explicación de fuentes"><i class="bi bi-question-circle"></i></a></strong>
             <ol class="small ps-3 mt-2">
               {% for src in msg.fuentes_vista %}
               <li class="mb-2">
