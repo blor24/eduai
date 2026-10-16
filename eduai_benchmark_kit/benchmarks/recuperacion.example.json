@@ -1,8 +1,0 @@
-[
-  {
-    "id": "recuperacion_01",
-    "username": "REEMPLAZAR_USUARIO",
-    "query": "¿Qué es la fotosíntesis?",
-    "expected_source": "REEMPLAZAR_DOCUMENTO.pdf"
-  }
-]
