@@ -12,6 +12,36 @@
 <h1>Administración de inteligencia artificial</h1>
 <p><a href="{% url 'admin_guide' %}#configuracion-ia">¿Cómo utilizar este panel? Ver guía para administradores &rarr;</a></p>
 <p>Los cambios del LLM se aplican inmediatamente a las siguientes solicitudes. Los cambios de embeddings requieren reindexar los documentos; la versión anterior permanece activa hasta completar el trabajo.</p>
+<!-- EDUAI-AUTO-GPU-V1 -->
+<section>
+<h2>Hardware y aceleración</h2>
+{% if hardware %}
+<p><strong>Embeddings Hugging Face (contenedor backend):</strong>
+<code>{{ hardware.selected_device|default:"no disponible" }}</code>
+(configurado: <code>{{ hardware.requested_device }}</code>).</p>
+<p>PyTorch: <code>{{ hardware.pytorch_version }}</code>.
+GPU CUDA/ROCm accesible: <strong>{{ hardware.cuda_available|yesno:"Sí,No" }}</strong>.
+MPS accesible: <strong>{{ hardware.mps_available|yesno:"Sí,No" }}</strong>.</p>
+{% if hardware.gpu_name %}
+<p>GPU detectada: <strong>{{ hardware.gpu_name }}</strong>
+({{ hardware.gpu_total_memory_gib }} GiB de memoria total).</p>
+{% endif %}
+{% if hardware.error %}<p><strong>Advertencia:</strong> {{ hardware.error }}</p>{% endif %}
+{% elif hardware_error %}<p>{{ hardware_error }}</p>{% endif %}
+<h3>Modelos cargados actualmente en Ollama</h3>
+{% if ollama_error %}<p>{{ ollama_error }}</p>{% else %}
+{% if ollama_running %}
+<table><thead><tr><th>Modelo</th><th>Procesamiento</th><th>VRAM ocupada</th></tr></thead><tbody>
+{% for model in ollama_running %}
+<tr><td><code>{{ model.name }}</code></td><td>{{ model.state }}</td><td>{{ model.vram_gib }} GiB</td></tr>
+{% endfor %}
+</tbody></table>
+{% else %}<p>No hay modelos cargados en memoria de Ollama.</p>{% endif %}
+{% endif %}
+<p><small>Este diagnóstico muestra el backend y Ollama. El worker es otro proceso:
+consulta sus logs para confirmar el dispositivo utilizado. La memoria mostrada es
+la ocupada por cada modelo de Ollama cargado, no la VRAM libre del sistema.</small></p>
+</section>
 <section>
 <h2>1. Generador de preguntas y exámenes</h2>
 <form method="post" action="{% url 'ai_set_generator' %}">{% csrf_token %}

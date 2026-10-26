@@ -19,6 +19,16 @@ from eduai.api.scope import verify as verify_document_scope, InvalidDocumentScop
 ### CONFIGURACIONES
 app = Flask(__name__)
 register_document_routes(app)
+
+@app.route('/internal/ai/hardware', methods=['GET'])
+def internal_ai_hardware():
+    from eduai.api.documents import authorized
+    if not authorized():
+        return jsonify({'error': 'Prohibido'}), 403
+    from eduai.ai.device import hardware_info
+    return jsonify(hardware_info())
+
+# EDUAI-AUTO-GPU-V1
 DJANGO_BASE_URL = os.environ.get("DJANGO_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 
 #Permitir peticiones desde el mismo host

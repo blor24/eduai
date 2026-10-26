@@ -8,6 +8,8 @@
 
 El proyecto utiliza **modelos ejecutados localmente con Ollama**, recuperación aumentada por generación (**RAG**) y búsqueda semántica con **ChromaDB**. La aplicación está desarrollada con **Django** y **Flask**, almacena sus datos relacionales en **PostgreSQL** y puede ejecutarse mediante **Docker Compose**.
 
+EduAI v3 también admite **aceleración opcional por GPU NVIDIA**, con un iniciador que selecciona entre el despliegue CPU y GPU según el hardware y el acceso disponible desde Docker. Los **embeddings de Hugging Face** detectan el dispositivo accesible mediante PyTorch; **Ollama** gestiona de forma independiente la ejecución de sus modelos.
+
 > **Estado del proyecto:** versión funcional orientada a desarrollo y uso local. La configuración de Docker Compose incluida no está endurecida para su exposición directa a Internet.
 
 ## Contenido
@@ -20,6 +22,7 @@ El proyecto utiliza **modelos ejecutados localmente con Ollama**, recuperación 
 - [Instalación con Docker Compose](#-instalación-con-docker-compose)
 - [Guía de uso](#-guía-de-uso)
 - [Administración de modelos de IA](#-administración-de-modelos-de-ia)
+- [Aceleración automática CPU/GPU](#-aceleración-automática-cpugpu)
 - [Almacenamiento y persistencia](#-almacenamiento-y-persistencia)
 - [Comandos útiles](#-comandos-útiles)
 - [Pruebas y resolución de problemas](#-pruebas-y-resolución-de-problemas)
@@ -50,6 +53,7 @@ El proyecto utiliza **modelos ejecutados localmente con Ollama**, recuperación 
 - Reindexación de documentos al cambiar el modelo de embeddings, mediante trabajos gestionados por un worker.
 - Seguimiento de trabajos y evaluación de recuperación documental con métricas como **Hit@5** y **MRR@5**.
 - Guía de administración integrada en la aplicación.
+- Diagnóstico de aceleración desde `/admin/ia/`: dispositivo PyTorch del backend y memoria de modelos cargados en Ollama.
 
 ## 🛠️ Tecnologías
 
@@ -59,12 +63,12 @@ El proyecto utiliza **modelos ejecutados localmente con Ollama**, recuperación 
 | API y chat | **Flask**, **Flask-SocketIO** | Procesamiento de archivos, generación y mensajería en tiempo real |
 | Base de datos relacional | **PostgreSQL 17** | Usuarios, mensajes, registros, resultados y configuración de IA |
 | Modelos generativos | **Ollama** | Chat contextualizado y generación de preguntas |
-| Embeddings | **Hugging Face / Sentence Transformers** y **Ollama** | Representación vectorial de documentos y consultas |
+| Embeddings | **Hugging Face / Sentence Transformers** y **Ollama** | Representación vectorial de documentos y consultas; selección CPU/GPU de PyTorch para Hugging Face |
 | Base de datos vectorial | **ChromaDB** | Indexación, similitud y recuperación semántica |
 | Orquestación de IA | **LangChain** | Integración de modelos, prompts y recuperación RAG |
 | Procesamiento documental | PyMuPDF, pdfplumber, python-docx, python-pptx, Tesseract OCR | Lectura de texto y reconocimiento de imágenes |
 | Exportación | FPDF, python-docx | Generación de actividades descargables |
-| Entorno | **Docker y Docker Compose** | Ejecución de servicios y almacenamiento persistente |
+| Entorno | **Docker y Docker Compose** | Ejecución persistente; configuración CPU y variante NVIDIA GPU |
 
 > Los modelos no están limitados a un único LLM. Por defecto, la configuración del generador utiliza `gemma3:4b`, mientras que el embedding inicial es `sentence-transformers/all-MiniLM-L12-v2`. El administrador puede cambiar los modelos compatibles desde la interfaz.
 
@@ -89,7 +93,7 @@ flowchart TD
     W <--> O
 ```
 
-**Carga e indexación:** Django recibe el archivo y lo envía a Flask. Flask extrae el contenido, lo divide en fragmentos, calcula los embeddings y almacena los vectores en ChromaDB. Django registra los metadatos en PostgreSQL.
+**Carga e indexación:** Django recibe el archivo y lo envía a Flask. Flask extrae el contenido, lo divide en fragmentos, calcula los embeddings y almacena los vectores en ChromaDB. Django registra los metadatos en PostgreSQL. Cuando se usan embeddings de Hugging Face, el backend y el worker seleccionan CPU o GPU de acuerdo con la disponibilidad de PyTorch en cada contenedor.
 
 **Chat RAG:** al realizar una consulta, Flask recupera los fragmentos relevantes del índice vectorial y proporciona ese contexto al modelo de Ollama para generar una respuesta fundamentada en los documentos seleccionados.
 
@@ -103,14 +107,17 @@ eduai/
 │   ├── eduai-backend.py         # Aplicación Flask y Socket.IO
 │   ├── ai_worker.py             # Trabajos de IA en segundo plano
 │   ├── eduai/                  # Módulos organizados (si se aplicó la modularización)
-│   │   ├── ai/                 # Chat RAG, modelos y generación
+│   │   ├── ai/                 # Chat RAG, modelos, generación y detección de GPU
+│   │   │   └── device.py       # Selección auto/cpu/cuda/mps y diagnóstico
 │   │   ├── api/                # Endpoints y autorización
 │   │   ├── documents/          # Procesamiento documental
 │   │   └── storage/            # Almacenamiento vectorial
 │   ├── tools/                  # Utilidades y evaluaciones
 │   ├── font/                   # Fuente utilizada al generar PDF
-│   ├── Dockerfile
-│   └── requirements.docker.txt
+│   ├── Dockerfile             # Imagen predeterminada con PyTorch para CPU
+│   ├── Dockerfile.gpu         # Imagen alternativa con PyTorch CUDA 12.1
+│   ├── requirements.docker.txt
+│   └── requirements.docker.gpu.txt
 ├── frontend/
 │   ├── Dockerfile
 │   └── djtesis/
@@ -118,24 +125,28 @@ eduai/
 │       ├── root/                # Configuración y rutas Django
 │       └── tesis/               # Modelos, vistas, admin, plantillas y migraciones
 ├── docs/                       # Documentación del proyecto
-├── compose.yaml                # Servicios Docker Compose
+├── compose.yaml                # Servicios Docker Compose y modo CPU
+├── compose.gpu.yaml            # Acceso NVIDIA + imágenes de GPU (overlay)
+├── iniciar_eduai.sh            # Selección automática de modo CPU/GPU
+├── INSTRUCCIONES_GPU.md        # Notas técnicas y reversión del parche
 ├── .env.example                # Plantilla de configuración
 ├── .gitignore
 ├── LICENSE
 └── README.md
 ```
 
-> Si no se ejecutó la opción de modularización del script de limpieza, algunos módulos Python continúan directamente en `backend/`. Los puntos de entrada y los comandos Docker siguen siendo los mismos.
+Los archivos de aceleración (`device.py`, `Dockerfile.gpu`, `compose.gpu.yaml`, `iniciar_eduai.sh`, etc.) aparecen **después de aplicar el parche** `actualizar_eduai_gpu.py`. Dicho script se distribuye por separado y no es obligatorio dejarlo dentro del repositorio.
 
 ## 📋 Requisitos
 
 - **Docker Engine** con el complemento **Docker Compose**.
 - **Git** para clonar el repositorio.
 - Conexión a Internet para descargar imágenes Docker, dependencias y modelos.
-- Espacio en disco y memoria suficientes para los modelos seleccionados. El consumo depende del LLM y del modelo de embeddings; la configuración incluida utiliza PyTorch para CPU en el backend.
+- Espacio en disco y memoria suficientes para los modelos seleccionados. El consumo depende del LLM y del modelo de embeddings; **CPU sigue siendo la configuración base**.
 - Puertos **8000** y **8080** disponibles en el equipo anfitrión.
+- **Solo para NVIDIA GPU:** controlador NVIDIA funcional (`nvidia-smi`), **NVIDIA Container Toolkit** y runtime NVIDIA configurado en Docker. La imagen GPU requiere más espacio en disco y utiliza PyTorch con CUDA 12.1.
 
-No es necesario instalar PostgreSQL ni Ollama directamente en el equipo: ambos se ejecutan como servicios de Docker Compose.
+No es necesario instalar PostgreSQL ni Ollama directamente en el equipo: ambos se ejecutan como servicios de Docker Compose. La GPU **no es obligatoria** y la instalación predeterminada sigue funcionando en CPU.
 
 ## 🚀 Instalación con Docker Compose
 
@@ -176,13 +187,24 @@ DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,frontend
 
 ### 3. Construir e iniciar los contenedores
 
+**Inicio tradicional (CPU):**
+
 ```bash
 docker compose config --quiet
 docker compose up -d --build
 docker compose ps
 ```
 
-Los servicios definidos son `postgres`, `ollama`, `backend`, `frontend` y `ai_worker`. Al iniciar el frontend se ejecutan las migraciones de Django automáticamente. La primera construcción puede descargar dependencias de aprendizaje automático de tamaño considerable.
+**Inicio con selección automática (si aplicaste la actualización CPU/GPU):**
+
+```bash
+chmod +x iniciar_eduai.sh
+./iniciar_eduai.sh
+```
+
+El iniciador intenta activar el overlay NVIDIA solo cuando detecta una GPU en el host **y** un runtime NVIDIA en Docker; en otros casos inicia la configuración CPU. Consulta [Aceleración automática CPU/GPU](#-aceleración-automática-cpugpu) para requisitos, modos forzados y comandos manuales.
+
+Los servicios definidos son `postgres`, `ollama`, `backend`, `frontend` y `ai_worker`. Al iniciar el frontend se ejecutan las migraciones de Django automáticamente. La primera construcción puede descargar dependencias de aprendizaje automático de tamaño considerable; la imagen GPU requiere descargas adicionales de CUDA.
 
 ### 4. Descargar un modelo generativo en Ollama
 
@@ -238,6 +260,131 @@ Accede con una cuenta de superusuario a `/admin/ia/` o `/admin/ollama/`.
 **Evaluación de recuperación:** el panel permite utilizar casos de prueba para medir indicadores como Hit@5 y MRR@5.
 
 Consulta también la [guía de administración](docs/GUIA_ADMINISTRACION.md).
+
+## ⚡ Aceleración automática CPU/GPU
+
+No reemplaza el sistema de modelos: conserva las configuraciones elegidas por el administrador, la lógica RAG, los documentos y los índices actuales.
+
+### 1. ¿Qué se ejecuta en CPU y qué puede acelerarse?
+
+| Componente | Modo CPU | Modo NVIDIA GPU |
+| --- | --- | --- |
+| **Ollama (chat y generación)** | Ollama ejecuta el modelo utilizando CPU | El contenedor recibe acceso a NVIDIA; Ollama determina si puede cargar el modelo en GPU, parcialmente o en CPU |
+| **Hugging Face (embeddings)** | Imagen estándar: PyTorch para CPU | Imagen `Dockerfile.gpu` con PyTorch CUDA; `detect_device()` puede seleccionar `cuda` |
+| **Embeddings de Ollama** | Procesados por Ollama en CPU | Utilizan la aceleración que Ollama tenga disponible |
+| **Django, PostgreSQL, OCR y otras tareas** | Operación habitual en CPU | No se transfieren automáticamente a la GPU |
+
+**Importante:** `EDUAI_ACCELERATOR` elige la configuración de contenedores; `EDUAI_EMBEDDING_DEVICE` selecciona el dispositivo dentro de los procesos Python. Detectar CUDA en Python **no** concede acceso a la GPU: los contenedores deben disponer de controladores, librerías y permisos adecuados.
+
+### 2. Variables de configuración
+
+Agrega estas variables a tu archivo `.env` si quieres configurarlas explícitamente (el script las añade a `.env.example`):
+
+```dotenv
+# Selecciona qué stack Docker utilizar al arrancar con iniciar_eduai.sh
+EDUAI_ACCELERATOR=auto
+
+# Dispositivo de los embeddings Hugging Face dentro del backend y worker
+EDUAI_EMBEDDING_DEVICE=auto
+```
+
+| Variable | Valores | Comportamiento |
+| --- | --- | --- |
+| `EDUAI_ACCELERATOR` | `auto` (predeterminado), `cpu`, `gpu` | Solo lo interpreta `iniciar_eduai.sh`. `auto` selecciona GPU si detecta NVIDIA en el host y runtime NVIDIA de Docker; `cpu` fuerza el Compose base; `gpu` fuerza el overlay NVIDIA. |
+| `EDUAI_EMBEDDING_DEVICE` | `auto` (predeterminado), `cpu`, `cuda`, `mps` | Se transmite al backend y al worker. `auto` elige CUDA/ROCm, después MPS si existe, y CPU en último lugar. Forzar `cuda` o `mps` sin disponibilidad real produce un error explícito. |
+
+La opción `mps` corresponde principalmente a PyTorch en entornos Apple compatibles; **el Compose GPU incluido está orientado a NVIDIA**, no configura MPS ni ROCm de AMD. El valor `auto` no instala controladores ni convierte una imagen CPU en una imagen CUDA.
+
+### 3. Iniciar EduAI en el dispositivo disponible
+
+**Automático (recomendado):**
+
+```bash
+./iniciar_eduai.sh
+```
+
+**Forzar CPU**, por ejemplo para diagnosticar problemas de CUDA:
+
+```bash
+EDUAI_ACCELERATOR=cpu ./iniciar_eduai.sh
+```
+
+**Forzar NVIDIA GPU** cuando el host y Docker ya estén preparados:
+
+```bash
+EDUAI_ACCELERATOR=gpu ./iniciar_eduai.sh
+```
+
+También puedes utilizar Docker Compose directamente:
+
+```bash
+# Solo CPU
+docker compose -f compose.yaml up -d --build
+
+# NVIDIA GPU para Ollama, backend y worker
+docker compose -f compose.yaml -f compose.gpu.yaml up -d --build
+```
+
+El overlay `compose.gpu.yaml` asigna el dispositivo NVIDIA a **`ollama`**, **`backend`** y **`ai_worker`**, y compila los dos últimos con `backend/Dockerfile.gpu`. Este último instala `torch==2.5.1` desde el índice **CUDA 12.1 (cu121)**. La opción GPU puede utilizar más almacenamiento y memoria, y no garantiza que todos los modelos quepan íntegramente en VRAM.
+
+> Si forzaste `gpu` en un host sin acceso funcional a NVIDIA, es posible que Docker no inicie los servicios. El modo automático utiliza CPU cuando las comprobaciones preliminares de GPU fallan, pero no puede anticipar todas las incompatibilidades de drivers, runtime o memoria.
+
+### 4. Verificar hardware y modelos
+
+Comprueba primero la GPU en el host:
+
+```bash
+nvidia-smi
+```
+
+Si EduAI está ejecutándose con **Compose CPU**, consulta los dispositivos reconocidos por PyTorch:
+
+```bash
+docker compose exec backend python -c \
+  "from eduai.ai.device import hardware_info; print(hardware_info())"
+
+docker compose exec ai_worker python -c \
+  "from eduai.ai.device import hardware_info; print(hardware_info())"
+
+docker compose exec ollama ollama ps
+```
+
+Si se está usando **Compose GPU**, especifica los dos archivos también en los comandos de diagnóstico:
+
+```bash
+docker compose -f compose.yaml -f compose.gpu.yaml exec backend \
+  python -c "from eduai.ai.device import hardware_info; print(hardware_info())"
+
+docker compose -f compose.yaml -f compose.gpu.yaml exec ai_worker \
+  python -c "from eduai.ai.device import hardware_info; print(hardware_info())"
+
+docker compose -f compose.yaml -f compose.gpu.yaml exec ollama ollama ps
+```
+
+El objeto `hardware_info()` devuelve información como `requested_device`, `selected_device`, `cuda_available`, `mps_available`, versión de PyTorch y nombre de GPU cuando está disponible. `ollama ps` muestra los modelos **actualmente cargados** y su distribución CPU/GPU; si no hay modelos en memoria, primero utiliza el chat o genera una actividad.
+
+En **`http://localhost:8000/admin/ia/`**, el superusuario puede consultar:
+
+- Dispositivo efectivo y GPU detectada por **PyTorch en el backend**, además de la memoria total identificada.
+- Modelos residentes de **Ollama**, modo CPU/GPU aproximado y VRAM ocupada por modelo.
+- Advertencias cuando no se puede consultar alguno de esos servicios.
+
+El worker es un proceso independiente; **su dispositivo debe verificarse por separado** con el comando anterior o mediante sus registros. La información de VRAM del panel **no representa la memoria libre total de la GPU**.
+
+### 5. Solución de problemas de aceleración
+
+| Síntoma | Qué revisar |
+| --- | --- |
+| `selected_device: cpu` pese a tener NVIDIA | Verifica `nvidia-smi`, runtime NVIDIA Docker, uso del overlay `compose.gpu.yaml` y `torch.cuda.is_available()` dentro del contenedor. |
+| `CUDA/ROCm no disponible` al forzar `cuda` | Cambia `EDUAI_EMBEDDING_DEVICE=auto` o instala/configura la imagen y GPU compatibles. |
+| El iniciador escoge CPU aunque existe NVIDIA | Ejecuta `docker info` y verifica que muestre el runtime `nvidia`; también comprueba `nvidia-smi -L`. |
+| Ollama sigue utilizando CPU | Revisa `ollama ps`, compatibilidad del modelo, drivers y VRAM; que PyTorch detecte CUDA no garantiza que Ollama utilice la GPU. |
+| Error por VRAM insuficiente (*out of memory*) | Reduce el tamaño/concurrencia de los modelos o usa CPU. El selector automático no cambia de dispositivo durante una inferencia fallida. |
+| El panel `/admin/ia/` no muestra hardware | Revisa la conectividad Django → Flask y la variable compartida `AI_INTERNAL_TOKEN`. |
+<>
+### Consideraciones para AWS y otros despliegues
+
+El overlay GPU anterior se utiliza con **Docker Compose**, no se aplica automáticamente a **ECS/EC2 u otros orquestadores**. En ECS debes utilizar una infraestructura e imagen compatibles con GPU y asignar los recursos GPU a las definiciones de tarea y contenedores correspondientes (Ollama, backend y worker). La detección Python funciona solo cuando el contenedor puede acceder realmente al dispositivo.
 
 ## 💾 Almacenamiento y persistencia
 
@@ -310,7 +457,7 @@ docker compose exec frontend python manage.py test \
 
 **Si Django no inicia:** revisa `docker compose logs frontend postgres`, las variables obligatorias de `.env` y el estado de salud de PostgreSQL.
 
-**Si las preguntas tardan en generarse:** comprueba el estado de Ollama y considera elegir un modelo compatible con la memoria y CPU disponibles.
+**Si las preguntas tardan en generarse:** comprueba el estado de Ollama, sus modelos residentes (`ollama ps`) y la disponibilidad de RAM/VRAM. Una GPU puede acelerar la generación, pero solo si Ollama tiene acceso a ella; los embeddings de Hugging Face se configuran por separado.
 
 ## 🔒 Seguridad
 
@@ -321,6 +468,8 @@ EduAI está preparado para **desarrollo local**, no para desplegar el archivo Co
 - Restringe el acceso externo a Flask y protege las rutas internas mediante autenticación y segmentación de red.
 - Revisa la configuración CORS, cookies, CSRF, límites de carga y manejo de errores.
 - Mantén secretos fuera del repositorio y configura respaldos de PostgreSQL, ChromaDB y documentos.
+- No publiques el endpoint interno de diagnóstico `/internal/ai/hardware`; requiere el token compartido `AI_INTERNAL_TOKEN` y está destinado a la comunicación Django → Flask.
+- Excluye de Git la carpeta de respaldos `.eduai_gpu_backup/` y el `.env` real.
 - Actualiza y revisa periódicamente las dependencias.
 
 Los documentos pueden contener información privada: **no subas archivos de usuarios, respaldos de bases de datos, modelos descargados ni credenciales a GitHub**.

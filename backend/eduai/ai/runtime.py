@@ -1,6 +1,11 @@
 """Configuración de IA obtenida de Django; no existen modelos activos hardcodeados en Flask."""
 import os
 import time
+import logging
+from eduai.ai.device import detect_device
+
+log = logging.getLogger(__name__)
+# EDUAI-AUTO-GPU-V1
 from functools import lru_cache
 import requests
 from langchain_core.embeddings import Embeddings
@@ -45,8 +50,13 @@ class E5Embeddings(Embeddings):
 @lru_cache(maxsize=2)
 def embedding_for(provider, model):
     if provider == 'hf':
-        hf = HuggingFaceEmbeddings(model_name=model, model_kwargs={'device': 'cpu'},
-                                    encode_kwargs={'normalize_embeddings': model.startswith('intfloat/multilingual-e5-')})
+        device = detect_device()
+        log.info('EduAI Hugging Face: modelo=%s, dispositivo=%s', model, device)
+        hf = HuggingFaceEmbeddings(
+            model_name=model,
+            model_kwargs={'device': device},
+            encode_kwargs={'normalize_embeddings': model.startswith('intfloat/multilingual-e5-')}
+        )
         return E5Embeddings(hf) if model.startswith('intfloat/multilingual-e5-') else hf
     if provider == 'ollama':
         return OllamaEmbeddings(model=model, base_url=os.getenv('OLLAMA_HOST', 'http://ollama:11434'))

@@ -48,3 +48,5 @@ backend/testing/rag.py
 respaldos/
 .eduai_cleanup_backups/
 .eduai_cleanup_reports/
+
+.eduai_gpu_backup/

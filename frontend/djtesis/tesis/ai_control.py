@@ -66,6 +66,41 @@ def panel(request):
     except requests.RequestException:
         installed_embeds = []
         messages.warning(request, 'No se pudieron consultar los embeddings instalados en Ollama.')
+    # Estado del backend (no presupone que el worker tenga idéntico hardware).
+    hardware = None
+    hardware_error = None
+    try:
+        backend_url = os.getenv('FLASK_BASE_URL', 'http://backend:8080').rstrip('/')
+        token = os.getenv('AI_INTERNAL_TOKEN', '')
+        response = requests.get(
+            f'{backend_url}/internal/ai/hardware',
+            headers={'X-EduAI-Internal-Token': token}, timeout=(2, 5)
+        )
+        response.raise_for_status()
+        hardware = response.json()
+    except (requests.RequestException, ValueError):
+        hardware_error = 'No fue posible consultar el hardware del backend.'
+
+    ollama_running = []
+    ollama_error = None
+    try:
+        response = requests.get(f'{OLLAMA_BASE_URL}/api/ps', timeout=(2, 5))
+        response.raise_for_status()
+        for item in response.json().get('models', []):
+            total = max(0, int(item.get('size') or 0))
+            vram = max(0, int(item.get('size_vram') or 0))
+            state = 'CPU'
+            if vram > 0:
+                state = 'GPU' if total and vram >= total else 'GPU + CPU'
+            ollama_running.append({
+                'name': str(item.get('name', ''))[:180],
+                'state': state,
+                'vram_gib': round(vram / (1024 ** 3), 2),
+            })
+    except (requests.RequestException, ValueError, TypeError, KeyError):
+        ollama_error = 'No fue posible consultar los modelos residentes en Ollama.'
+
+    # EDUAI-AUTO-GPU-V1
     return render(request, 'tesis/ai_panel.html', {
         'title': 'Administración de IA',
         'config': AIConfiguration.current(),
@@ -74,6 +109,10 @@ def panel(request):
         'ollama_embeds': installed_embeds,
         'ollama_models': sorted(installed),
         'busy': _ongoing(),
+        'hardware': hardware,
+        'hardware_error': hardware_error,
+        'ollama_running': ollama_running,
+        'ollama_error': ollama_error,
     })
 
 

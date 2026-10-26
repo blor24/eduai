@@ -33,6 +33,7 @@ services:
       AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?Configura AI_INTERNAL_TOKEN en .env}
       OLLAMA_HOST: http://ollama:11434
       HF_HOME: /app/.cache/huggingface
+      EDUAI_EMBEDDING_DEVICE: ${EDUAI_EMBEDDING_DEVICE:-auto}
       ANONYMIZED_TELEMETRY: "FALSE"
     ports:
       - "8080:8080"
@@ -103,6 +104,7 @@ services:
       AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?Configura AI_INTERNAL_TOKEN en .env}
       OLLAMA_HOST: http://ollama:11434
       HF_HOME: /app/.cache/huggingface
+      EDUAI_EMBEDDING_DEVICE: ${EDUAI_EMBEDDING_DEVICE:-auto}
       ANONYMIZED_TELEMETRY: "FALSE"
     volumes:
       - backend_uploads:/app/uploads
