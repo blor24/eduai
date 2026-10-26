@@ -1,4 +1,20 @@
 services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-eduai}
+      POSTGRES_USER: ${POSTGRES_USER:-eduai_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configura POSTGRES_PASSWORD en .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+
   ollama:
     image: ollama/ollama:latest
     restart: unless-stopped
@@ -38,7 +54,12 @@ services:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Debes establecer DJANGO_SECRET_KEY en .env}
       DJANGO_DEBUG: ${DJANGO_DEBUG:-1}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,frontend}
-      DJANGO_DB_PATH: /app/data/db.sqlite3
+      DJANGO_DB_PATH: /app/data/db.sqlite3  # Volumen SQLite anterior, NO borrar
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-eduai}
+      DB_USER: ${POSTGRES_USER:-eduai_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Configura POSTGRES_PASSWORD en .env}
       FLASK_BASE_URL: http://backend:8080
       AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?Configura AI_INTERNAL_TOKEN en .env}
       OLLAMA_BASE_URL: http://ollama:11434
@@ -66,7 +87,10 @@ services:
       - django_data:/app/data
       - django_media:/app/media
     depends_on:
-      - backend
+      backend:
+        condition: service_started
+      postgres:
+        condition: service_healthy
 
 
   ai_worker:
@@ -91,6 +115,7 @@ services:
         condition: service_started
 
 volumes:
+  postgres_data:
   ollama_data:
   backend_uploads:
   backend_vectors:

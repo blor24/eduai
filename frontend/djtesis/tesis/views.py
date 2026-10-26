@@ -20,7 +20,7 @@ from django.conf import settings
 from django.db.models import Count, Avg, Sum
 from django.views.decorators.cache import never_cache
 
-from .ollama_api import list_models
+from .ollama_api import list_chat_models
 
 def index(request):
     register_form = CrearUserForm()
@@ -192,7 +192,7 @@ def available_ollama_models(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido.'}, status=405)
     try:
-        return JsonResponse({'models': [item['name'] for item in list_models()]})
+        return JsonResponse({'models': [item['name'] for item in list_chat_models()]})
     except (requests.RequestException, ValueError, KeyError, TypeError):
         return JsonResponse({'error': 'No se pudo consultar Ollama.'}, status=503)
 
@@ -201,7 +201,7 @@ def chat(request):
     user = request.user.username
     messages = list(Mensaje.objects.filter(sender_id=request.user).order_by('timestamp')[:50])  # Load last 50 messages
     try:
-        models = list_models()
+        models = list_chat_models()
     except (requests.RequestException, ValueError, KeyError, TypeError):
         models = []
     # Los enlaces se resuelven por titularidad, nunca desde una URL enviada por la IA.

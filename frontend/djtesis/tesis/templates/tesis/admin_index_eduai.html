@@ -1,5 +1,10 @@
 {% extends 'admin/index.html' %}
 {% block content %}
+    <div class="module" style="padding:1rem; margin-bottom:1.5rem;">
+        <h2>Guía de administración</h2>
+        <p>Aprende a gestionar usuarios, documentos, estadísticas, modelos de IA y trabajos de reindexación.</p>
+        <p><a href="{% url 'admin_guide' %}">Consultar la guía de uso del administrador &rarr;</a></p>
+    </div>
     {% if request.user.is_superuser %}
     <div class="module" style="padding:1rem; margin-bottom:1.5rem;">
         <h2>Inteligencia artificial</h2>

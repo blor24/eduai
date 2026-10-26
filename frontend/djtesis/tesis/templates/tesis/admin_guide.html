@@ -1,0 +1,219 @@
+{% extends 'admin/base_site.html' %}
+{% block title %}Guía de administración | EduAI{% endblock %}
+{% block breadcrumbs %}
+<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Administración</a> &rsaquo; Guía de uso</div>
+{% endblock %}
+{% block content %}
+<style>
+  .edua-guide{max-width:1100px;line-height:1.58;color:var(--body-fg,#333)}
+  .edua-guide *, .edua-guide *::before,.edua-guide *::after{box-sizing:border-box}
+  .edua-guide .hero{padding:26px 28px;border-radius:12px;background:var(--darkened-bg,#f0f4f8);border:1px solid var(--hairline-color,#ddd);margin-bottom:22px}
+  .edua-guide .eyebrow{text-transform:uppercase;font-size:12px;font-weight:700;letter-spacing:.07em;color:var(--link-fg,#417690);margin:0 0 9px}
+  .edua-guide .hero h1{font-size:26px;line-height:1.25;font-weight:700;margin:0 0 12px;color:var(--body-fg,#333)}
+  .edua-guide .hero p{font-size:14px;margin:0 0 17px;max-width:780px}
+  .edua-guide .hero-actions{display:flex;gap:12px;flex-wrap:wrap}
+  .edua-guide .action{display:inline-block;padding:9px 14px;background:var(--primary,#417690);color:var(--primary-fg,#fff)!important;text-decoration:none;border-radius:6px;font-weight:600}
+  .edua-guide .secondary-action{background:transparent;color:var(--link-fg,#417690)!important;border:1px solid var(--hairline-color,#aaa)}
+  .edua-guide .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:13px;margin-bottom:26px}
+  .edua-guide .card{display:block;text-decoration:none!important;color:var(--body-fg,#333)!important;background:var(--body-bg,#fff);border:1px solid var(--hairline-color,#ddd);border-radius:10px;padding:17px 18px;transition:border-color .15s,transform .15s}
+  .edua-guide .card:hover,.edua-guide .card:focus-visible{border-color:var(--link-fg,#417690);transform:translateY(-1px)}
+  .edua-guide .card .symbol{display:inline-block;border-radius:7px;background:var(--darkened-bg,#edf4f8);color:var(--link-fg,#417690);padding:4px 7px;font-size:15px;font-weight:700;margin-bottom:12px}
+  .edua-guide .card strong{display:block;font-size:15px;margin-bottom:6px}
+  .edua-guide .card small{font-size:12px;opacity:.85;display:block;line-height:1.5}
+  .edua-guide .section{background:var(--body-bg,#fff);border:1px solid var(--hairline-color,#ddd);border-radius:10px;padding:22px 24px;margin:0 0 20px;scroll-margin-top:22px}
+  .edua-guide .section h2{font-size:20px;margin:0 0 15px;color:var(--body-fg,#333)}
+  .edua-guide .section h3{font-size:15px;color:var(--body-fg,#333);margin:20px 0 8px}
+  .edua-guide p,.edua-guide li{font-size:14px}
+  .edua-guide ol,.edua-guide ul{padding-left:23px;margin-top:9px}
+  .edua-guide li{padding-bottom:6px}
+  .edua-guide .hint{padding:12px 15px;background:var(--darkened-bg,#f5f5f5);border-left:4px solid var(--primary,#417690);border-radius:4px;margin:14px 0}
+  .edua-guide .warning{border-left-color:#b7791f}
+  .edua-guide .guide-table{width:100%;border-collapse:collapse;margin:13px 0}
+  .edua-guide .guide-table th,.edua-guide .guide-table td{padding:10px;border-bottom:1px solid var(--hairline-color,#ddd);text-align:left;vertical-align:top;font-size:13px}
+  .edua-guide .guide-table th{background:var(--darkened-bg,#f4f4f4)}
+  .edua-guide code{font-size:12px;overflow-wrap:anywhere}
+  .edua-guide .section-links{display:flex;gap:15px;flex-wrap:wrap;margin-top:14px}
+  .edua-guide .section-links a{font-weight:600}
+  .edua-guide details{border:1px solid var(--hairline-color,#ddd);border-radius:8px;margin:10px 0;padding:13px}
+  .edua-guide summary{cursor:pointer;font-weight:700;font-size:14px}
+  .edua-guide details p{margin:10px 0 0}
+  @media(max-width:650px){.edua-guide .hero{padding:20px}.edua-guide .section{padding:18px}.edua-guide .hero h1{font-size:22px}.edua-guide .guide-table{display:block;overflow-x:auto}}
+</style>
+<div class="edua-guide">
+  <header class="hero">
+    <div class="eyebrow">EduAI · Centro de ayuda administrativa</div>
+    <h1>Guía de uso para administradores</h1>
+    <p>Consulta cómo gestionar la plataforma desde Django Admin, mantener disponibles los modelos de IA y revisar el procesamiento de documentos. Las operaciones mostradas dependen de los permisos de tu cuenta.</p>
+    <div class="hero-actions">
+      <a class="action" href="#primeros-pasos">Primeros pasos</a>
+      <a class="action secondary-action" href="{% url 'admin:index' %}">Volver al panel</a>
+    </div>
+  </header>
+
+  <nav class="cards" aria-label="Secciones de la guía">
+    <a class="card" href="#primeros-pasos"><span class="symbol" aria-hidden="true">01</span><strong>Primeros pasos</strong><small>Acceso, permisos y navegación.</small></a>
+    <a class="card" href="#usuarios"><span class="symbol" aria-hidden="true">02</span><strong>Usuarios y permisos</strong><small>Alta de cuentas y roles.</small></a>
+    <a class="card" href="#registros"><span class="symbol" aria-hidden="true">03</span><strong>Datos de la plataforma</strong><small>Documentos, mensajes y estadísticas.</small></a>
+    <a class="card" href="#banco"><span class="symbol" aria-hidden="true">04</span><strong>Banco y exámenes</strong><small>Consulta y control de contenidos.</small></a>
+    {% if request.user.is_superuser %}
+    <a class="card" href="#ollama"><span class="symbol" aria-hidden="true">05</span><strong>Modelos Ollama</strong><small>Instalación y retirada de modelos.</small></a>
+    <a class="card" href="#configuracion-ia"><span class="symbol" aria-hidden="true">06</span><strong>Configuración de IA</strong><small>Generación y embeddings.</small></a>
+    <a class="card" href="#trabajos"><span class="symbol" aria-hidden="true">07</span><strong>Trabajos y evaluación</strong><small>Reindexación y pruebas.</small></a>
+    {% endif %}
+    <a class="card" href="#solucion-problemas"><span class="symbol" aria-hidden="true">08</span><strong>Solución de problemas</strong><small>Errores frecuentes y comprobaciones.</small></a>
+  </nav>
+
+  <section id="primeros-pasos" class="section">
+    <h2>1. Primeros pasos</h2>
+    <ol>
+      <li>Inicia sesión en <strong>Django Admin</strong> con una cuenta que tenga habilitado el acceso al personal (<em>is_staff</em>).</li>
+      <li>En la portada encontrarás las secciones y modelos a los que tienes permiso para acceder.</li>
+      <li>Usa <strong>Ver</strong>, <strong>Añadir</strong>, <strong>Modificar</strong> y <strong>Eliminar</strong> solo cuando esos permisos estén concedidos y la acción sea necesaria.</li>
+      <li>Para tareas de modelos y reindexación, entra con una cuenta <strong>superusuario</strong> y verifica que los servicios de Ollama y <code>ai_worker</code> estén funcionando.</li>
+    </ol>
+    <div class="hint"><strong>Recomendación:</strong> utiliza una cuenta administrativa individual. Evita emplear el superusuario para tareas cotidianas que puede hacer una cuenta con permisos limitados.</div>
+  </section>
+
+  <section id="usuarios" class="section">
+    <h2>2. Gestión de usuarios y permisos</h2>
+    <ol>
+      <li>Desde el inicio del administrador, abre <strong>Autenticación y autorización → Usuarios</strong>.</li>
+      <li>Selecciona un usuario para editar su nombre, correo, estado activo y permisos, o crea uno nuevo si tu cuenta lo permite.</li>
+      <li>Marca <strong>Es miembro del personal</strong> solo para quienes deban acceder a Django Admin. Ser personal no equivale a tener todos los permisos.</li>
+      <li>Concede <strong>superusuario</strong> únicamente a quienes deban administrar toda la plataforma, incluida su configuración de IA.</li>
+      <li>Para cambiar una contraseña, utiliza el formulario de cambio correspondiente; no intentes editar contraseñas cifradas manualmente.</li>
+    </ol>
+    {% if request.user.is_superuser %}<div class="section-links"><a href="{% url 'admin:auth_user_changelist' %}">Abrir administración de usuarios &rarr;</a></div>{% endif %}
+    <div class="hint warning">Desactivar o eliminar un usuario puede afectar el acceso y los datos relacionados. Revisa los registros y realiza un respaldo antes de acciones irreversibles.</div>
+  </section>
+
+  <section id="registros" class="section">
+    <h2>3. Documentos, mensajes y estadísticas</h2>
+    <p>Estos modelos muestran datos registrados por la aplicación. Son útiles para asistencia, control de calidad y revisión del funcionamiento.</p>
+    <table class="guide-table">
+      <thead><tr><th>Sección</th><th>Qué contiene</th><th>Uso recomendado</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Archivos</strong></td><td>Usuario propietario, nombre, tipo y fecha de carga.</td><td>Comprobar si Django registró la carga de un documento.</td></tr>
+        <tr><td><strong>Estadísticas</strong></td><td>Calificación, tiempo de estudio, tiempo de chat y fecha de uso.</td><td>Investigar resultados o revisar actividad de estudio.</td></tr>
+        <tr><td><strong>Mensajes</strong></td><td>Preguntas, modelos usados, respuestas y fuentes, cuando existan.</td><td>Diagnosticar problemas con el chat respetando la privacidad.</td></tr>
+      </tbody>
+    </table>
+    <div class="hint warning"><strong>Importante:</strong> borrar un registro de <em>Archivos</em> en Django Admin no equivale necesariamente a eliminar el documento original ni su índice vectorial. Para eliminar documentos utiliza preferentemente la función <strong>Archivos</strong> del usuario.</div>
+    <p>Utiliza los filtros por fecha y usuario para encontrar registros. Limita la consulta y exportación de conversaciones a personal autorizado.</p>
+    {% if request.user.is_superuser %}
+    <div class="section-links">
+      <a href="{% url 'admin:tesis_archivo_changelist' %}">Archivos &rarr;</a>
+      <a href="{% url 'admin:tesis_estadistica_changelist' %}">Estadísticas &rarr;</a>
+      <a href="{% url 'admin:tesis_mensaje_changelist' %}">Mensajes &rarr;</a>
+    </div>
+    {% endif %}
+  </section>
+
+  <section id="banco" class="section">
+    <h2>4. Banco de preguntas y exámenes guardados</h2>
+    <p>El administrador permite consultar los registros de <strong>Preguntas del banco</strong>, <strong>Exámenes guardados</strong> y <strong>Elementos de examen</strong>.</p>
+    <ol>
+      <li>Busca las preguntas por usuario, tema o parte del enunciado.</li>
+      <li>Filtra por tipo y dificultad; comprueba también la dificultad solicitada al modelo.</li>
+      <li>Revisa las opciones, la respuesta correcta y la explicación antes de introducir cambios.</li>
+      <li>Para editar preguntas o crear exámenes como un estudiante, resulta más cómodo usar el <strong>Banco de preguntas</strong> de la aplicación.</li>
+    </ol>
+    <div class="hint">Los exámenes guardados almacenan una copia del contenido de sus preguntas. Modificar una pregunta original no necesariamente cambia una copia ya guardada dentro de un examen.</div>
+    {% if request.user.is_superuser %}
+    <div class="section-links">
+      <a href="{% url 'admin:tesis_bancopregunta_changelist' %}">Preguntas &rarr;</a>
+      <a href="{% url 'admin:tesis_examenguardado_changelist' %}">Exámenes &rarr;</a>
+    </div>
+    {% endif %}
+  </section>
+
+  {% if request.user.is_superuser %}
+  <section id="ollama" class="section">
+    <h2>5. Administración de modelos Ollama</h2>
+    <p>Desde este panel puedes consultar, descargar o eliminar modelos disponibles para todos los usuarios de EduAI.</p>
+    <h3>Instalar un modelo</h3>
+    <ol>
+      <li>Abre <strong>Administrar modelos de Ollama</strong> desde la portada.</li>
+      <li>Escribe el nombre exacto del modelo, por ejemplo <code>gemma3:4b</code>, y selecciona <strong>Descargar modelo</strong>.</li>
+      <li>Comprueba el progreso y confirma que aparece en <strong>Modelos instalados</strong>.</li>
+      <li>Los modelos conversacionales instalados podrán aparecer en el selector del chat.</li>
+    </ol>
+    <h3>Eliminar un modelo</h3>
+    <p>Revisa qué usuarios o procesos lo necesitan, pulsa <strong>Eliminar</strong> y confirma. El panel impide quitar el generador de preguntas activo y el embedding de Ollama activo. Otros modelos, si están en uso en el chat, pueden provocar fallos al eliminarlos durante una consulta.</p>
+    <div class="hint warning">Descargar modelos requiere espacio en disco, memoria y acceso al servidor Ollama. No elimines un modelo sin verificar si lo utiliza un proceso activo.</div>
+    <div class="section-links"><a href="{% url 'ollama_admin' %}">Abrir modelos de Ollama &rarr;</a></div>
+  </section>
+
+  <section id="configuracion-ia" class="section">
+    <h2>6. Configuración de IA y embeddings</h2>
+    <p>El panel de IA separa el modelo que <strong>genera preguntas</strong> del modelo que <strong>crea embeddings</strong> para recuperar información documental.</p>
+    <table class="guide-table">
+      <thead><tr><th>Configuración</th><th>Efecto</th><th>¿Hace falta reindexar?</th></tr></thead>
+      <tbody>
+        <tr><td>Modelo generador (LLM Ollama)</td><td>Modifica el modelo usado para crear preguntas y exámenes.</td><td>No.</td></tr>
+        <tr><td><code>num_ctx</code></td><td>Configura el contexto de la generación (entre 512 y 32768 tokens en este panel).</td><td>No.</td></tr>
+        <tr><td><code>num_predict</code></td><td>Configura la salida máxima (entre 64 y 4096 tokens en este panel).</td><td>No.</td></tr>
+        <tr><td>Embedding Hugging Face u Ollama</td><td>Cambia cómo se representan los fragmentos para búsquedas semánticas.</td><td><strong>Sí.</strong> Usa «Reindexar y activar modelo».</td></tr>
+      </tbody>
+    </table>
+    <h3>Cambiar el generador de preguntas</h3>
+    <ol><li>Instala el LLM desde Ollama si todavía no aparece en la lista.</li><li>En el panel de IA, selecciona el modelo y ajusta el contexto y la salida máxima.</li><li>Guarda la configuración. Las siguientes solicitudes utilizarán los nuevos valores.</li></ol>
+    <h3>Cambiar el modelo de embeddings</h3>
+    <ol><li>Haz un respaldo de tus documentos e índices vectoriales.</li><li>Selecciona el proveedor y el modelo. Si es Hugging Face, puedes crear primero un trabajo de descarga; si es Ollama, instálalo antes en su panel.</li><li>Selecciona <strong>Reindexar y activar modelo</strong> y crea el trabajo.</li><li>Comprueba que <code>ai_worker</code> lo procesa y espera a que su estado sea <strong>Completado</strong>.</li><li>Revisa el índice activo, los documentos y el chat después del cambio.</li></ol>
+    <div class="hint warning">Mientras la reindexación no finalice correctamente, se conserva el índice anterior. No detengas el worker durante la migración ni la ejecutes sobre documentos que no estén disponibles.</div>
+    <div class="section-links"><a href="{% url 'ai_panel' %}">Abrir configuración de IA &rarr;</a></div>
+  </section>
+
+  <section id="trabajos" class="section">
+    <h2>7. Trabajos de IA y evaluación</h2>
+    <p>El panel de IA muestra trabajos recientes de descarga, reindexación, eliminación de caché HF y evaluación del índice activo.</p>
+    <table class="guide-table">
+      <thead><tr><th>Estado</th><th>Significado</th><th>Qué hacer</th></tr></thead>
+      <tbody>
+        <tr><td><strong>En cola</strong></td><td>Registrado, aún no ejecutado.</td><td>Verificar que <code>ai_worker</code> esté activo.</td></tr>
+        <tr><td><strong>Ejecutándose</strong></td><td>El worker está procesando el trabajo.</td><td>Consultar progreso; evitar cambios concurrentes.</td></tr>
+        <tr><td><strong>Completado</strong></td><td>El worker notificó finalización exitosa.</td><td>Validar el resultado desde Archivos y Chat.</td></tr>
+        <tr><td><strong>Error</strong></td><td>El trabajo falló.</td><td>Leer el mensaje de error y los logs del worker antes de repetir.</td></tr>
+      </tbody>
+    </table>
+    <h3>Evaluar la recuperación documental</h3>
+    <ol>
+      <li>Crea <strong>Casos de prueba</strong> con el usuario, una consulta y el nombre de archivo fuente esperado.</li>
+      <li>Activa los casos que quieras evaluar.</li>
+      <li>En el panel de IA, pulsa <strong>Evaluar índice activo</strong>.</li>
+      <li>Consulta los resultados del trabajo, incluidos Hit@5, MRR@5 y latencia cuando estén disponibles.</li>
+    </ol>
+    <div class="section-links">
+      <a href="{% url 'admin:tesis_aitestcase_changelist' %}">Casos de prueba &rarr;</a>
+      <a href="{% url 'admin:tesis_aijob_changelist' %}">Trabajos de IA &rarr;</a>
+    </div>
+  </section>
+  {% endif %}
+
+  <section id="solucion-problemas" class="section">
+    <h2>{% if request.user.is_superuser %}8{% else %}5{% endif %}. Solución de problemas y seguridad</h2>
+    <details>
+      <summary>Un modelo no aparece en el chat</summary>
+      <p>Comprueba que Ollama está accesible, que el modelo es conversacional y que aparece en su listado. Después actualiza la página de chat. Solo los superusuarios pueden instalar o eliminar modelos desde el panel.</p>
+    </details>
+    <details>
+      <summary>Un documento aparece «Sin indexar» o «No disponible»</summary>
+      <p>«Sin indexar» indica que no hay fragmentos en el índice activo. «No disponible» señala que no se localiza el archivo original. Comprueba la carga, los permisos y si se cambió el modelo de embeddings sin reindexar.</p>
+    </details>
+    <details>
+      <summary>Un trabajo de IA permanece «En cola»</summary>
+      <p>Comprueba que <code>ai_worker</code> está levantado y puede comunicarse con Django. En un entorno Docker Compose local, un administrador técnico puede revisar los registros con <code>docker compose logs --tail=100 ai_worker</code>.</p>
+    </details>
+    <details>
+      <summary>La descarga de un modelo falla</summary>
+      <p>Comprueba la disponibilidad de Ollama, espacio libre, conexión y nombre exacto del modelo. Revisa los registros de Ollama antes de reintentar.</p>
+    </details>
+    <details>
+      <summary>Las preguntas generadas contienen errores</summary>
+      <p>Revisa el documento, la versión del índice, el modelo configurado y el enunciado. La dificultad solicitada y las respuestas generadas no garantizan calidad pedagógica: siempre es necesaria la verificación humana.</p>
+    </details>
+    <div class="hint warning"><strong>Seguridad y privacidad:</strong> no compartas contraseñas ni tokens internos; protege los respaldos y accede a mensajes y documentos solo con una finalidad administrativa justificada. Antes de borrar información o reindexar, confirma que puedes restaurar los datos.</div>
+  </section>
+  <p><a href="{% url 'admin:index' %}">&larr; Volver al inicio de Administración</a></p>
+</div>
+{% endblock %}

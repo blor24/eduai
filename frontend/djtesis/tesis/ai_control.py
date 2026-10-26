@@ -13,8 +13,10 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
-from .ai_models import AIConfiguration, AIJob, AITestCase, HF_MODELS, OLLAMA_EMBED_MODELS
-from .ollama_api import list_models, valid_model_name, OLLAMA_BASE_URL
+from .ai_models import AIConfiguration, AIJob, AITestCase, HF_MODELS
+from .ollama_api import (
+    list_chat_models, list_embedding_models, valid_model_name, OLLAMA_BASE_URL
+)
 
 log = logging.getLogger(__name__)
 
@@ -30,8 +32,21 @@ def _internal(request):
     return bool(configured and provided and secrets.compare_digest(configured, provided))
 
 
+# Los nombres HF son identificadores de repositorios; solo superusuarios pueden enviarlos.
+# La lista HF_MODELS queda como sugerencias, no como lista exclusiva.
+HF_REPO_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$')
+
+
 def _allowed(provider, name):
-    return name in HF_MODELS if provider == 'hf' else name in OLLAMA_EMBED_MODELS
+    if not isinstance(name, str) or not 1 <= len(name) <= 200:
+        return False
+    if provider == 'hf':
+        return bool(HF_REPO_RE.fullmatch(name))
+    if provider == 'ollama':
+        return valid_model_name(name) and any(
+            model['name'] == name for model in list_embedding_models()
+        )
+    return False
 
 
 def _ongoing():
@@ -42,16 +57,21 @@ def _ongoing():
 def panel(request):
     _superuser(request)
     try:
-        installed = {x['name'] for x in list_models()}
+        installed = {x['name'] for x in list_chat_models()}
     except requests.RequestException:
         installed = set()
         messages.warning(request, 'No se pudo consultar Ollama.')
+    try:
+        installed_embeds = [x['name'] for x in list_embedding_models()]
+    except requests.RequestException:
+        installed_embeds = []
+        messages.warning(request, 'No se pudieron consultar los embeddings instalados en Ollama.')
     return render(request, 'tesis/ai_panel.html', {
         'title': 'Administración de IA',
         'config': AIConfiguration.current(),
         'jobs': AIJob.objects.all()[:25],
         'hf_models': HF_MODELS,
-        'ollama_embeds': OLLAMA_EMBED_MODELS,
+        'ollama_embeds': installed_embeds,
         'ollama_models': sorted(installed),
         'busy': _ongoing(),
     })
@@ -62,7 +82,7 @@ def set_generator(request):
     _superuser(request)
     model = (request.POST.get('generation_model') or '').strip()
     try:
-        installed = {x['name'] for x in list_models()}
+        installed = {x['name'] for x in list_chat_models()}
     except requests.RequestException:
         messages.error(request, 'Ollama no está disponible.')
         return redirect('ai_panel')
@@ -73,7 +93,7 @@ def set_generator(request):
         response = requests.post(f'{OLLAMA_BASE_URL}/api/show', json={'model': model}, timeout=(5, 20))
         response.raise_for_status()
         capabilities = response.json().get('capabilities', [])
-        if capabilities and 'completion' not in capabilities:
+        if not isinstance(capabilities, list) or 'completion' not in capabilities:
             messages.error(request, 'El modelo elegido no es conversacional.')
             return redirect('ai_panel')
     except requests.RequestException:
@@ -101,11 +121,23 @@ def queue_job(request):
     kind = (request.POST.get('kind') or '').strip()
     provider = (request.POST.get('provider') or '').strip()
     name = (request.POST.get('model_name') or '').strip()
+    if provider == 'hf':
+        custom_hf_name = (request.POST.get('hf_custom_model') or '').strip()
+        if custom_hf_name:
+            name = custom_hf_name
     if kind == 'benchmark':
         current = AIConfiguration.current()
         provider, name = current.embedding_provider, current.embedding_model
-    if kind not in ('download', 'delete', 'reindex', 'benchmark') or not _allowed(provider, name):
-        messages.error(request, 'Operación o modelo no permitido.')
+    if kind not in ('download', 'delete', 'reindex', 'benchmark'):
+        messages.error(request, 'Operación no permitida.')
+        return redirect('ai_panel')
+    try:
+        permitted = _allowed(provider, name)
+    except requests.RequestException:
+        messages.error(request, 'No se pudo verificar si el embedding está instalado en Ollama.')
+        return redirect('ai_panel')
+    if not permitted:
+        messages.error(request, 'Modelo no válido o no instalado con capacidad de embeddings.')
         return redirect('ai_panel')
     cfg = AIConfiguration.current()
     if kind == 'delete' and provider != 'hf':

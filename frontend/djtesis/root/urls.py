@@ -19,6 +19,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import path
 from tesis import ollama_admin
 from tesis import ai_control
+from tesis import admin_guide
 from tesis import views 
 from tesis import banco_views
 from tesis import document_views
@@ -27,6 +28,7 @@ from django.conf.urls.static import static
 
 
 urlpatterns = [
+    path('admin/guia/', admin.site.admin_view(admin_guide.guide), name='admin_guide'),
     path('admin/ia/', admin.site.admin_view(ai_control.panel), name='ai_panel'),
     path('admin/ia/generator/', admin.site.admin_view(ai_control.set_generator), name='ai_set_generator'),
     path('admin/ia/jobs/', admin.site.admin_view(ai_control.queue_job), name='ai_queue_job'),

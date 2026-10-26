@@ -7,13 +7,13 @@ import os
 from flask_socketio import SocketIO, emit
 import requests
 import io, zipfile
-from llmchat import PDFStorage, RAGApplication, ChooseModel
-from vectorstorage import VectorStorageManager
-from llmgeneration import QuestionGenerator, create_questions_pdf, create_questions_docx
+from eduai.ai.chat import PDFStorage, RAGApplication, ChooseModel
+from eduai.storage.vectors import VectorStorageManager
+from eduai.ai.generation import QuestionGenerator, create_questions_pdf, create_questions_docx
 
 from pathlib import Path
-from document_api import register as register_document_routes
-from document_scope import verify as verify_document_scope, InvalidDocumentScope
+from eduai.api.documents import register as register_document_routes
+from eduai.api.scope import verify as verify_document_scope, InvalidDocumentScope
 #FLASK_cors para permitir comunicacion en el mismo host
 #from flask_cors import CORS
 ### CONFIGURACIONES
@@ -65,7 +65,7 @@ def allowed_file(filename):
 ### ENDPOINTS
 @app.route('/upload', methods=['POST'])
 def upload():
-    from document_api import authorized
+    from eduai.api.documents import authorized
     if not authorized():
         return jsonify({'error': 'Prohibido'}), 403
     try:
@@ -114,7 +114,7 @@ def upload():
     
 @app.route('/delete', methods=['POST'])
 def delete_file():
-    from document_api import authorized
+    from eduai.api.documents import authorized
     if not authorized():
         return jsonify({'error': 'Prohibido'}), 403
     try:
@@ -147,11 +147,22 @@ def delete_file():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-def installed_ollama_models():
+def installed_chat_model(name):
+    """Valida nuevamente en Flask: no confiar solo en el selector Django."""
+    if not isinstance(name, str) or not name:
+        return False
     base_url = os.getenv('OLLAMA_HOST', 'http://localhost:11434').rstrip('/')
     response = requests.get(f'{base_url}/api/tags', timeout=(5, 12))
     response.raise_for_status()
-    return {item['name'] for item in response.json().get('models', [])}
+    installed = {item.get('name') for item in response.json().get('models', [])}
+    if name not in installed:
+        return False
+    detail = requests.post(
+        f'{base_url}/api/show', json={'model': name}, timeout=(5, 12)
+    )
+    detail.raise_for_status()
+    capabilities = detail.json().get('capabilities', [])
+    return isinstance(capabilities, list) and 'completion' in capabilities
 
 
 @socketio.on("message")
@@ -174,10 +185,10 @@ def handle_message(msg):
         return
     receiver = str(msg.get('receiver') or '').strip()
     try:
-        if receiver not in installed_ollama_models():
+        if not installed_chat_model(receiver):
             emit('model_error', {
                 'messageId': msg.get('messageId'),
-                'error': 'Este modelo ya no está instalado. Selecciona otro modelo.'
+                'error': 'Este modelo no está instalado o no admite conversación. Selecciona un LLM.'
             })
             return
     except (requests.RequestException, ValueError, KeyError):
@@ -245,7 +256,7 @@ def handle_message(msg):
     
 @app.route('/file', methods=['POST'])
 def file():
-    from document_api import authorized
+    from eduai.api.documents import authorized
     if not authorized():
         return jsonify({'error': 'Prohibido'}), 403
     qgen = QuestionGenerator()
@@ -288,7 +299,7 @@ def file():
 
 @app.route('/exam', methods=['POST'])
 def exam():
-    from document_api import authorized
+    from eduai.api.documents import authorized
     if not authorized():
         return jsonify({'error': 'Prohibido'}), 403
     qgen = QuestionGenerator()

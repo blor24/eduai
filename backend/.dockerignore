@@ -17,3 +17,4 @@ testing/
 .vscode/
 venv/
 .venv/
+tools/legacy_tests/

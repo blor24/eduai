@@ -2,13 +2,14 @@
 from django.db import models
 from django.utils import timezone
 
+# Recomendaciones para el selector de Hugging Face, no una lista obligatoria.
+# El administrador puede indicar otros repositorios compatibles.
 HF_MODELS = (
     'sentence-transformers/all-MiniLM-L12-v2',
     'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2',
     'intfloat/multilingual-e5-small',
     'intfloat/multilingual-e5-base',
 )
-OLLAMA_EMBED_MODELS = ('embeddinggemma', 'qwen3-embedding:0.6b')
 PROVIDERS = (('hf', 'Hugging Face'), ('ollama', 'Ollama'))
 
 

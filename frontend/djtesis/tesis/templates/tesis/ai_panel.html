@@ -10,6 +10,7 @@
 </style>
 <div class="ai-wrap">
 <h1>Administración de inteligencia artificial</h1>
+<p><a href="{% url 'admin_guide' %}#configuracion-ia">¿Cómo utilizar este panel? Ver guía para administradores &rarr;</a></p>
 <p>Los cambios del LLM se aplican inmediatamente a las siguientes solicitudes. Los cambios de embeddings requieren reindexar los documentos; la versión anterior permanece activa hasta completar el trabajo.</p>
 <section>
 <h2>1. Generador de preguntas y exámenes</h2>
@@ -33,8 +34,10 @@
 {% for model in hf_models %}<option data-provider="hf" value="{{ model }}">{{ model }}</option>{% endfor %}
 {% for model in ollama_embeds %}<option data-provider="ollama" value="{{ model }}">{{ model }}</option>{% endfor %}
 </select></div>
+<div id="hf-custom-wrap"><label for="hf-custom">Otro repositorio Hugging Face (opcional)</label>
+<input id="hf-custom" name="hf_custom_model" maxlength="200" placeholder="organizacion/modelo-de-embeddings"></div>
 <button type="submit" class="default" {% if busy %}disabled{% endif %}>Crear trabajo</button></form>
-<p>Para <strong>Ollama</strong>, primero instala el embedding desde <a href="{% url 'ollama_admin' %}">Modelos Ollama</a> y luego selecciona «Reindexar». Las descargas HF se ejecutan en el worker, no en la solicitud web.</p>
+<p>Los embeddings de <strong>Ollama</strong> se detectan automáticamente por su capacidad <code>embedding</code>. Para <strong>Hugging Face</strong> puedes usar una sugerencia o escribir el ID de otro repositorio compatible. Primero instala el embedding de Ollama desde <a href="{% url 'ollama_admin' %}">Modelos Ollama</a> y luego selecciona «Reindexar». Las descargas HF se ejecutan en el worker, no en la solicitud web.</p>
 </section>
 <section>
 <h2>3. Evaluación reproducible</h2>
@@ -51,8 +54,10 @@
 </div>
 <script>
 (()=>{const provider=document.getElementById('provider'),model=document.getElementById('name'),kind=document.getElementById('kind');
+const hfWrap=document.getElementById('hf-custom-wrap'),hfInput=document.getElementById('hf-custom');
 function sync(){if(kind.value==='download'||kind.value==='delete')provider.value='hf';provider.querySelectorAll('option').forEach(o=>o.disabled=(kind.value!=='reindex'&&o.value!=='hf'));
-const options=Array.from(model.options);let first=null;options.forEach(o=>{o.hidden=o.dataset.provider!==provider.value;o.disabled=o.hidden;if(!o.hidden&&!first)first=o;});if(model.selectedOptions[0]?.disabled&&first)model.value=first.value;}
+const options=Array.from(model.options);let first=null;options.forEach(o=>{o.hidden=o.dataset.provider!==provider.value;o.disabled=o.hidden;if(!o.hidden&&!first)first=o;});if(model.selectedOptions[0]?.disabled&&first)model.value=first.value;
+hfWrap.hidden=provider.value!=='hf';if(provider.value!=='hf')hfInput.value='';}
 provider.addEventListener('change',sync);kind.addEventListener('change',sync);sync();})();
 </script>
 {% endblock %}

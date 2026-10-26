@@ -16,6 +16,7 @@
 </style>
 <div class="ollama-wrap">
   <h1>Administración de modelos de Ollama</h1>
+  <p><a href="{% url 'admin_guide' %}#ollama">Ver guía de instalación y eliminación de modelos &rarr;</a></p>
   <p>Los modelos se instalan en el volumen persistente de Ollama. El selector del chat se actualiza automáticamente para los usuarios conectados.</p>
   {% if error %}<p class="errornote">{{ error }}</p>{% endif %}
   <div class="module" style="padding:15px;">
