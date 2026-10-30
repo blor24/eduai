@@ -294,15 +294,97 @@
 
       const overlay = document.getElementById("loading-overlay");
 
-      // Show spinner when navigating away (link clicks, form submits, refreshes)
-      window.addEventListener("beforeunload", function () {
-        if (overlay) overlay.style.display = "flex";
+      // Mostrar el overlay durante una navegación real
+      function showLoadingOverlay() {
+          if (!overlay) return;
+
+          overlay.style.display = "flex";
+          overlay.setAttribute("aria-hidden", "false");
+      }
+
+      // Ocultar el overlay
+      function hideLoadingOverlay() {
+          if (!overlay) return;
+
+          overlay.style.display = "none";
+          overlay.setAttribute("aria-hidden", "true");
+      }
+
+      // Primera carga de la página
+      document.addEventListener("DOMContentLoaded", hideLoadingOverlay);
+
+      // Al regresar o avanzar con el navegador (BFCache)
+      window.addEventListener("pageshow", hideLoadingOverlay);
+
+      // Evitar conservar el spinner activo en la página almacenada
+      window.addEventListener("pagehide", hideLoadingOverlay);
+
+      // Mostrar spinner al navegar mediante enlaces
+      document.addEventListener("click", function (event) {
+          if (
+              event.defaultPrevented ||
+              event.button !== 0 ||
+              event.ctrlKey ||
+              event.metaKey ||
+              event.shiftKey ||
+              event.altKey
+          ) {
+              return;
+          }
+
+          const link = event.target instanceof Element
+              ? event.target.closest("a[href]")
+              : null;
+
+          if (!link) return;
+
+          // Excluir descargas, nuevas pestañas y componentes Bootstrap
+          if (
+              link.hasAttribute("download") ||
+              link.hasAttribute("data-bs-toggle") ||
+              (link.target && link.target !== "_self")
+          ) {
+              return;
+          }
+
+          let destination;
+
+          try {
+              destination = new URL(link.href, window.location.href);
+          } catch (error) {
+              return;
+          }
+
+          if (!["http:", "https:"].includes(destination.protocol)) {
+              return;
+          }
+
+          // No mostrar overlay al navegar a un ancla de la misma página
+          if (
+              destination.origin === window.location.origin &&
+              destination.pathname === window.location.pathname &&
+              destination.search === window.location.search &&
+              destination.hash
+          ) {
+              return;
+          }
+
+          showLoadingOverlay();
       });
 
-      // Hide spinner when DOM is fully ready
-      document.addEventListener("DOMContentLoaded", function () {
-        if (overlay) overlay.style.display = "none";
+      // Mostrar spinner al enviar formularios normales
+      document.addEventListener("submit", function (event) {
+          if (event.defaultPrevented) return;
+
+          const form = event.target;
+
+          if (!(form instanceof HTMLFormElement)) return;
+          if (form.target && form.target !== "_self") return;
+          if (form.method.toLowerCase() === "dialog") return;
+
+          showLoadingOverlay();
       });
+
     </script>
   </body>
 </html>
