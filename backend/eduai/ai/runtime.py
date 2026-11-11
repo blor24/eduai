@@ -3,14 +3,18 @@ import os
 import time
 import logging
 from eduai.ai.device import detect_device
+from sentence_transformers import SentenceTransformer
 
 log = logging.getLogger(__name__)
 # EDUAI-AUTO-GPU-V1
 from functools import lru_cache
+from threading import RLock
 import requests
 from langchain_core.embeddings import Embeddings
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_ollama import OllamaEmbeddings
+
+_embedding_lock = RLock()
 
 CONFIG_URL = os.environ.get('DJANGO_BASE_URL', 'http://frontend:8000').rstrip('/') + '/internal/ai/config/'
 TOKEN = os.environ.get('AI_INTERNAL_TOKEN', '')
@@ -46,9 +50,17 @@ class E5Embeddings(Embeddings):
     def embed_query(self, text):
         return self.embedding.embed_query('query: ' + text)
 
+@lru_cache(maxsize=4)
+def _embedding_for_cached(provider, model):
+    return _embedding_for_original(provider, model)
+
+
+def embedding_for(provider, model):
+    with _embedding_lock:
+        return _embedding_for_cached(provider, model)
 
 @lru_cache(maxsize=2)
-def embedding_for(provider, model):
+def _embedding_for_original(provider, model):
     if provider == 'hf':
         device = detect_device()
         log.info('EduAI Hugging Face: modelo=%s, dispositivo=%s', model, device)
