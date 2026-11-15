@@ -91,8 +91,55 @@ flowchart TD
     READY -.->|"Disponible para selección"| SCOPE
     READY -.->|"Fuente de contenido"| CFG
 ```
+## 3. Adminsitración de la aplicación
+```mermaid
+flowchart TD
+    A["Administrador EduAI"]
+    B["Autenticación y permisos"]
+    C{"Panel de administración"}
 
-## 3. Despliegue en el servidor con GPU
+    A --> B --> C
+
+    subgraph DJANGO["Administración general - Django"]
+        U["Gestionar usuarios y permisos"]
+        F["Consultar archivos registrados"]
+        E["Consultar estadísticas y resultados"]
+        PG[("PostgreSQL")]
+        U --> PG
+        F --> PG
+        E --> PG
+    end
+
+    subgraph IA["Administración de inteligencia artificial"]
+        M["Gestionar modelos Ollama"]
+        I["Instalar o eliminar modelos"]
+        CFG["Configurar modelos y parámetros de IA"]
+        EMB["Seleccionar modelos de embeddings"]
+        OLL["Ollama"]
+        DB[("Configuración persistente")]
+
+        M --> I --> OLL
+        CFG --> DB
+        EMB --> DB
+    end
+
+    subgraph SERVICES["Servicios que utilizan la configuración"]
+        FL["Flask - Chat RAG y exámenes"]
+        WK["AI Worker - Procesamiento"]
+    end
+
+    C --> U
+    C --> F
+    C --> E
+    C --> M
+    C --> CFG
+    C --> EMB
+
+    DB -.-> FL
+    DB -.-> WK
+    OLL <--> FL
+```
+## 4. Despliegue en el servidor con GPU
 
 La aplicación se expone en **`https://app.eduai.work.gd`** mediante Nginx y HTTPS. La pila utiliza Docker Compose con archivos base, GPU y producción. La aceleración se proporciona mediante la **NVIDIA RTX A6000**; el uso efectivo de CUDA depende de los permisos del contenedor, el runtime y el dispositivo configurado para cada proceso.
 
