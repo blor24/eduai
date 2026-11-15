@@ -8,7 +8,7 @@ Este diagrama presenta las capas de interfaz, lógica de aplicación, procesamie
 
 ```mermaid
 flowchart TB
-    U["Docente / estudiante<br/>Navegador web"]
+    U["Usuario<br/>Navegador web"]
     N["Nginx<br/>HTTPS y proxy inverso"]
 
     subgraph APP["Capa de aplicación"]
